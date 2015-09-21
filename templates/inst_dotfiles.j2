@@ -1,0 +1,10 @@
+#!/bin/sh
+
+# clone the repo
+git clone {{ item.dotfiles_ssh }}  {{ item.home | default('/home/' + item.name) ~ '/dotfiles' }}
+
+# generate the symlinks with the install script inside the dotfiles repo
+source ~/dotfiles/install.sh
+
+# install vundle to manage vim plugins
+git clone https://github.com/gmarik/Vundle.vim.git ~/.vim/bundle/Vundle.vim

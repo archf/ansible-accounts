@@ -1,0 +1,95 @@
+---
+### this role absolutely needs an external vars_files or variables defined
+# inside the playbook. Alternatly you could add defaults in 'vars/main.yml' but this could
+# result with sensitive informations inside the role
+
+#NOTE: to bootstrap properly one should invoke this role with 'remote_user:
+# root' to be able to create the first non root account from wich one can work
+# another option is to run it against an account with administrator privilege.
+
+- name: adding unexisting groups on target machines
+  group: name={{ item }} state=present
+  with_items: req_groups
+
+# somehow this task does not work well to remove users and therefore
+# one should use it to remove users
+- name: adding unexisting users
+  user:
+    name: "{{ item.name }}"
+    state: "{{ item.state | default('present') }}"
+    append: "{{ item.append | default('no') }}"
+    # add user to comma-delimited list of groups
+    groups: "{{ item.groups|default('') }}"
+    # groups: "{{ item.groups|join(',')|default('') }}"
+    # groups: "{{','.join(item.groups) }}"
+    # groups: "{% {{','.join(item.groups) }} if item.groups is defined else {{ '' }} %}"
+    # groups: "{{','.join(item.groups) | default('') }}"
+    comment: "{{ item.comment | default(None) }}"
+    createhome: "{{ item.createhome | default('yes') }}"
+    password: "{{ item.password | default('*') }}"
+    home: "{{ item.home | default('/home/' + item.name) }}"
+    move_home: "{{ item.move_home | default('no') }}"
+    non_unique: "{{ item.non_unique | default('no') }}"
+    shell: "{{ item.shell | default('/bin/bash') }}"
+    system: "{{ item.system | default('no') }}"
+    # ssh defaults (a key is generated in each accounts)
+    generate_ssh_key: "{{ item.gen_ssh_key | default('yes') }}"
+    ssh_key_passphrase: "{{ item.ssh_key_passphrase | default('q1w2e3') }}"
+    ssh_key_type: rsa
+    ssh_key_bits: 2048
+    ssh_key_file: ".ssh/{{ item.name }}_{{ ansible_hostname }}"
+    update_password: "{{ item.update_password | default('on_create') }}"
+  with_items: users
+  when: item.name != 'root'
+
+  # taken literaly from the ansible manual
+- name: Install public ssh keys for each users (for remote management)
+  authorized_key: "user={{ item.0.name }} key='{{ lookup('file', item.1) }}'"
+  with_subelements:
+  - users
+  - authorized
+  when: authorized is defined and ansible_distribution != "OpenWrt"
+
+- name: fetch the ssh public keys of every account to control machine
+  fetch: src="{{ item.home | default('/home/' + item.name) }}/.ssh/{{ item.name }}_{{ ansible_hostname }}.pub" dest="{{ private_dir }}/public_keys/" flat=yes
+  with_items: users
+  when: ansible_distribution != "OpenWrt"
+
+- name: create a .ssh directory in each user account
+  file: owner="{{ item.name }}" group="{{ item.name }}" path="{{ item.home | default('/home/' + item.name) ~ '/.ssh' }}" state=directory mode=700
+  with_items: users
+  when: item.system is not defined
+
+- name: create a .ssh/controlmasters directory in each user account
+  file: owner="{{ item.name }}" group="{{ item.name }}" path="{{ item.home | default('/home/' + item.name) ~ '/.ssh/controlmasters' }}" state=directory mode=700
+  with_items: users
+  when: item.system is not defined
+
+- name: source each user ssh config
+  include_vars: "{{ private_dir }}/users/{{ item.name }}_ssh_config.yml"
+  with_items: users
+  ignore_errors: True
+
+- name: template a ~/.ssh/config in each user account
+  template: src=ssh.config.j2 dest="{{ item.home | default('/home/' + item.name) ~ '/.ssh/config' }}" owner="{{ item.name }}" group="{{ item.name }}" mode=0600
+  with_items: users
+
+- name: create a bin directory in each user account
+  file: owner="{{ item.name }}" group="{{ item.name }}" path="{{ item.home | default('/home/' + item.name) ~ '/bin' }}" state=directory mode=700
+  with_items: users
+  when: item.system is not defined
+
+  # this is for temporary files ex: vim swap and backup file
+- name: create a tmp directory in each user account
+  file: owner="{{ item.name }}" group="{{ item.name }}" path="{{ item.home | default('/home/' + item.name) ~ '/tmp' }}" state=directory mode=700
+  with_items: users
+  when: item.system is not defined or item.system == false
+
+  # each user have to install his previously generated git public key to
+  # the git remote server before cloning the repo over ssh. This could be automated
+  # for private git servers ( != bitbucket or github )
+
+- name: template a bash script to manually install dotfiles
+  template: src=inst_dotfiles.j2 dest="{{ item.home | default('/home/' + item.name) ~ '/bin/inst_dotfiles.sh' }}" owner="{{ item.name }}" group="{{ item.name }}" mode=0700
+  with_items: users
+  when: item.dotfiles_ssh is defined

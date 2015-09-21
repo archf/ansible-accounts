@@ -1,0 +1,54 @@
+# {{ ansible_managed }}
+
+# This is a user specific ssh_config file. Please edit
+# <username>_ssh_config.yml if needed. There should be one yaml file per user.
+
+### defaults: see file defaults/main.yml
+
+Host *
+  User {{ item.name }}
+  IdentityFile ~/.ssh/{{ item.name }}_{{ ansible_hostname }}
+{% for key, value in user_ssh_config_defaults.iteritems() %}
+  {{key}} {{value}}
+{% endfor %}
+
+### user specifics: see <user>_ssh_config.yml
+
+{% for host_config in user_ssh_config %}
+Host {{host_config.Host}}
+{% for key, value in host_config|dictsort %}
+{% if key|lower != "host" %}
+  {{key}} {{value}}
+{% endif %}
+{% endfor %}
+
+{% endfor %}
+
+### built from ansible inventory with the following variables
+
+# ansible_ssh_host
+# ansible_ssh_port
+# ansible_ssh_user
+
+{# fixme: this should be a for loop #}
+{#
+{% if item != "localitem" and item != "127.0.0.1" %}
+Host {{hostvars[item].inventory_hostname_short}}
+{% if hostvars[item].ansible_ssh_host is defined %}HostName
+{{hostvars[item].ansible_ssh_host}}
+{% else %}HostName {{hostvars[item].inventory_hostname}}
+{% endif %}
+{% if hostvars[item].ansible_ssh_user is defined %}User
+{{hostvars[item].ansible_ssh_user}}
+{% elif hostvars[item].ansible_user_id is defined %}User
+{{hostvars[item].ansible_user_id}}
+{% endif %}
+{% if hostvars[item].ansible_ssh_port is defined %}Port
+{{hostvars[item].ansible_ssh_port}}
+{% endif %}
+{% if hostvars[item].ansible_ssh_private_key_file is defined %}IdentityFile
+{{hostvars[item].ansible_ssh_private_key_file}}
+{% endif %}
+{% endif %}
+
+#}

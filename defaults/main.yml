@@ -1,0 +1,15 @@
+---
+
+user_ssh_config_defaults:
+  ForwardX11Trusted: yes
+  ControlPersist: 2m
+  ControlMaster: auto
+  ControlPath: '~/.ssh/controlmasters/%r@%h:%p'
+
+# directory containing sensitive data
+private_dir: "{{ playbook_dir }}/private"
+
+users: []
+req_groups: []
+users_removed: []
+groups_removed: []
