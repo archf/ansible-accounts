@@ -93,3 +93,12 @@
   template: src=inst_dotfiles.j2 dest="{{ item.home | default('/home/' + item.name) ~ '/bin/inst_dotfiles.sh' }}" owner="{{ item.name }}" group="{{ item.name }}" mode=0700
   with_items: users
   when: item.dotfiles_ssh is defined
+
+  # todo: to test on hosts other than localhost
+- name: copy dotfiles from user control machine to target host
+  remote_user: "{{ ansible_user_id }}"
+  git: repo="{{ item.dotfiles_src_dir }}" dest="{{ item.home | default('/home/' + item.name) ~ '/dotfiles' }}" force=yes
+  delegate_to: localhost
+  with_items: users
+  when: item.dotfiles_dir is defined and ansible_ssh_host != 'localhost' and 'localhost' not in hostvars
+  # when: item.dotfiles_dir is defined
