@@ -6,7 +6,11 @@
 ### defaults: see file defaults/main.yml
 
 Host *
+{% if user_ssh_username is defined %}
+  User {{ user_ssh_username }}
+{% else %}
   User {{ item.name }}
+{% endif %}
   IdentityFile ~/.ssh/{{ item.name }}_{{ ansible_hostname }}
 {% for key, value in user_ssh_config_defaults.iteritems() %}
   {{key}} {{value}}
@@ -14,23 +18,19 @@ Host *
 
 ### user specifics: see <user>_ssh_config.yml
 
-{% for host_config in user_ssh_config %}
-Host {{host_config.Host}}
-{% for key, value in host_config|dictsort %}
-{% if key|lower != "host" %}
+{% for config in user_ssh_config %}
+{% if config.Host is defined %}
+Host {{config.Host}}
+{% else %}
+Match {{ config.Match }}
+{% endif %}
+{% for key, value in config|dictsort %}
+{% if key|lower != "host" and key|lower != 'match' %}
   {{key}} {{value}}
 {% endif %}
 {% endfor %}
 
 {% endfor %}
-
-### built from ansible inventory with the following variables
-
-# ansible_ssh_host
-# ansible_ssh_port
-# ansible_ssh_user
-
-{# fixme: this should be a for loop #}
 {#
 {% if item != "localitem" and item != "127.0.0.1" %}
 Host {{hostvars[item].inventory_hostname_short}}
@@ -50,5 +50,4 @@ Host {{hostvars[item].inventory_hostname_short}}
 {{hostvars[item].ansible_ssh_private_key_file}}
 {% endif %}
 {% endif %}
-
 #}

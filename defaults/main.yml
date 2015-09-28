@@ -1,8 +1,7 @@
 ---
 
 user_ssh_config_defaults:
-  ForwardX11Trusted: yes
-  ControlPersist: 2m
+  ControlPersist: 60s
   ControlMaster: auto
   ControlPath: '~/.ssh/controlmasters/%r@%h:%p'
 

@@ -101,4 +101,3 @@
   delegate_to: localhost
   with_items: users
   when: item.dotfiles_dir is defined and ansible_ssh_host != 'localhost' and 'localhost' not in hostvars
-  # when: item.dotfiles_dir is defined
