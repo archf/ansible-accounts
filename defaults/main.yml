@@ -12,3 +12,16 @@ users: []
 req_groups: []
 users_removed: []
 groups_removed: []
+
+# this is thel list of files to create symlinks to
+dotfiles:
+  - vimrc
+  - bashrc
+  - gitconfig
+  - git_template
+  - profile
+  - tmux.conf
+  - zshrc
+  - zprofile
+  - ansible.cfg
+  - urlview

@@ -50,6 +50,8 @@
   - authorized
   when: authorized is defined and ansible_distribution != "OpenWrt"
 
+  # no need to use keys from a gw device, ssh agent forwarding should be used
+  # instead
 - name: fetch the ssh public keys of every account to control machine
   fetch: src="{{ item.home | default('/home/' + item.name) }}/.ssh/{{ item.name }}_{{ ansible_hostname }}.pub" dest="{{ private_dir }}/public_keys/" flat=yes
   with_items: users
@@ -58,17 +60,17 @@
 - name: create a .ssh directory in each user account
   file: owner="{{ item.name }}" group="{{ item.name }}" path="{{ item.home | default('/home/' + item.name) ~ '/.ssh' }}" state=directory mode=700
   with_items: users
-  when: item.system is not defined
+  when: item.system is not defined or item.system == false
 
 - name: create a .ssh/controlmasters directory in each user account
   file: owner="{{ item.name }}" group="{{ item.name }}" path="{{ item.home | default('/home/' + item.name) ~ '/.ssh/controlmasters' }}" state=directory mode=700
   with_items: users
-  when: item.system is not defined
+  when: item.system is not defined or item.system == false
 
-- name: source each user ssh config
-  include_vars: "{{ private_dir }}/users/{{ item.name }}_ssh_config.yml"
-  with_items: users
-  ignore_errors: True
+# - name: source each user ssh config
+#   include_vars: "{{ private_dir }}/users/{{ item.name }}_ssh_config.yml"
+#   ignore_errors: yes
+#   with_items: users
 
 - name: template a ~/.ssh/config in each user account
   template: src=ssh.config.j2 dest="{{ item.home | default('/home/' + item.name) ~ '/.ssh/config' }}" owner="{{ item.name }}" group="{{ item.name }}" mode=0600
@@ -77,7 +79,7 @@
 - name: create a bin directory in each user account
   file: owner="{{ item.name }}" group="{{ item.name }}" path="{{ item.home | default('/home/' + item.name) ~ '/bin' }}" state=directory mode=700
   with_items: users
-  when: item.system is not defined
+  when: item.system is not defined or item.system == false
 
   # this is for temporary files ex: vim swap and backup file
 - name: create a tmp directory in each user account
@@ -94,10 +96,47 @@
   with_items: users
   when: item.dotfiles_ssh is defined
 
-  # todo: to test on hosts other than localhost
-- name: copy dotfiles from user control machine to target host
-  remote_user: "{{ ansible_user_id }}"
-  git: repo="{{ item.dotfiles_src_dir }}" dest="{{ item.home | default('/home/' + item.name) ~ '/dotfiles' }}" force=yes
-  delegate_to: localhost
+# - debug: var=hostvars
+
+  # # # todo: kinda slow, try rsync module?
+
+- name: copy dotfiles from user control machine to target host user account
+  copy:
+    src: "{{ item.dotfiles_src_path }}"
+    dest: "{{ item.home | default('/home/' + item.name) }}"
+    force: yes
+    owner: "{{ item.name }}"
+    group: "{{ item.name }}"
   with_items: users
-  when: item.dotfiles_dir is defined and ansible_ssh_host != 'localhost' and 'localhost' not in hostvars
+  when: item.dotfiles_src_path is defined and item.system == false
+
+- name: copy oh-my-zsh from user control machine to target host user account
+  copy:
+    src: "{{ item.omzsh_src_path }}"
+    dest: "{{ item.home | default('/home/' + item.name) }}"
+    force: yes
+    owner: "{{ item.name }}"
+    group: "{{ item.name }}"
+  with_items: users
+  when: item.omzsh_src_path is defined and item.system == false
+
+- name: copy .vim directory from user control machine to target host user account
+  copy:
+    src: "{{ item.vimdir_src_path }}"
+    dest: "{{ item.home | default('/home/' + item.name) }}"
+    force: yes
+    owner: "{{ item.name }}"
+    group: "{{ item.name }}"
+  with_items: users
+  when: item.vimdir_src_path is defined and item.system == false
+
+- name: create symlinks to dotfiles in user home directory
+  file:
+    state: link
+    src: "{{ item[0].home | default('/home/' + item[0].name) }}/dotfiles/{{ item[1] }}"
+    path: "{{ item[0].home | default('/home/' + item[0].name) }}/.{{ item[1] }}"
+    force: yes
+  with_nested:
+    - "{{ users }}"
+    - "{{ dotfiles }}"
+  when: item.dotfiles_src_path is defined and item.system == false
