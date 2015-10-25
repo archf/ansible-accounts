@@ -33,7 +33,7 @@
     shell: "{{ item.shell | default('/bin/bash') }}"
     system: "{{ item.system | default('no') }}"
     # ssh defaults (a key is generated in each accounts)
-    generate_ssh_key: "{{ item.gen_ssh_key | default('yes') }}"
+    generate_ssh_key: "{{ item.gen_ssh_key | default('no') }}"
     ssh_key_passphrase: "{{ item.ssh_key_passphrase | default('q1w2e3') }}"
     ssh_key_type: rsa
     ssh_key_bits: 2048
