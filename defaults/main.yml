@@ -6,6 +6,7 @@ user_ssh_config_defaults:
   ControlPath: '~/.ssh/controlmasters/%r@%h:%p'
 
 # directory containing sensitive data
+# it is used to contain ssh_keys
 private_dir: "{{ playbook_dir }}/private"
 
 users: []

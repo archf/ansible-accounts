@@ -3,20 +3,15 @@
 # This is a user specific ssh_config file. Please edit
 # <username>_ssh_config.yml if needed. There should be one yaml file per user.
 
-### defaults: see file defaults/main.yml
+### global: see file defaults/main.yml
 
 Host *
-{% if user_ssh_username is defined %}
-  User {{ user_ssh_username }}
-{% else %}
-  User {{ item.name }}
-{% endif %}
   IdentityFile ~/.ssh/{{ item.name }}_{{ ansible_hostname }}
 {% for key, value in user_ssh_config_defaults.iteritems() %}
   {{key}} {{value}}
 {% endfor %}
 
-### user specifics: see <user>_ssh_config.yml
+### per hosts conf: see <user>_ssh_config.yml
 
 {% for config in item.ssh_config %}
 {% if config.Host is defined %}

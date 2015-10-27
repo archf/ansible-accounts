@@ -73,7 +73,7 @@
 #   with_items: users
 
 - name: template a ~/.ssh/config in each user account
-  template: src=ssh.config.j2 dest="{{ item.home | default('/home/' + item.name) ~ '/.ssh/config' }}" owner="{{ item.name }}" group="{{ item.name }}" mode=0600
+  template: src=ssh.config.j2 dest="{{ item.home | default('/home/' + item.name) ~ '/.ssh/config' }}" owner="{{ item.name }}" group="{{ item.name }}" mode=0600 backup=yes
   with_items: users
 
 - name: create a bin directory in each user account
@@ -95,10 +95,6 @@
   template: src=inst_dotfiles.j2 dest="{{ item.home | default('/home/' + item.name) ~ '/bin/inst_dotfiles.sh' }}" owner="{{ item.name }}" group="{{ item.name }}" mode=0700
   with_items: users
   when: item.dotfiles_ssh is defined
-
-# - debug: var=hostvars
-
-  # # # todo: kinda slow, try rsync module?
 
 - name: copy dotfiles from user control machine to target host user account
   copy:
