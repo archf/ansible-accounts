@@ -1,12 +1,12 @@
 ---
 
 user_ssh_config_defaults:
-  ControlPersist: 60s
+  ControlPersist: 120s
   ControlMaster: auto
   ControlPath: '~/.ssh/controlmasters/%r@%h:%p'
 
 # directory containing sensitive data
-# it is used to contain ssh_keys
+# contains public ssh_keys
 private_dir: "{{ playbook_dir }}/private"
 
 users: []
@@ -14,7 +14,7 @@ req_groups: []
 users_removed: []
 groups_removed: []
 
-# this is thel list of files to create symlinks to
+# this is the list of files to create symlinks to
 dotfiles:
   - vimrc
   - bashrc
