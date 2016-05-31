@@ -104,7 +104,7 @@
     owner: "{{item.name}}"
     group: "{{item.name}}"
   with_items: "{{users}}"
-  when: item.dotfiles_src_path is defined and item.system == false
+  when: item.dotfiles_src_path is defined and item.system == false and ansible_host != "localhost"
 
 - name: copy oh-my-zsh from user control machine to target host user account
   copy:
@@ -114,7 +114,7 @@
     owner: "{{item.name}}"
     group: "{{item.name}}"
   with_items: "{{users}}"
-  when: item.omzsh_src_path is defined and item.system == false
+  when: item.omzsh_src_path is defined and item.system == false and ansible_host != "localhost"
 
 - name: copy .vim directory from user control machine to target host user account
   copy:
@@ -124,7 +124,7 @@
     owner: "{{item.name}}"
     group: "{{item.name}}"
   with_items: "{{users}}"
-  when: item.vimdir_src_path is defined and item.system == false
+  when: item.vimdir_src_path is defined and item.system == false and ansible_host != "localhost"
 
 - name: create symlinks to dotfiles in user home directory
   file:
