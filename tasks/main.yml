@@ -1,29 +1,18 @@
 ---
-### this role absolutely needs an external vars_files or variables defined
-# inside the playbook. Alternatly you could add defaults in 'vars/main.yml' but this could
-# result with sensitive informations inside the role
-
-#NOTE: to bootstrap properly one should invoke this role with 'remote_user:
-# root' to be able to create the first non root account from wich one can work
-# another option is to run it against an account with administrator privilege.
-
 - name: adding unexisting groups on target machines
   group: name={{item}} state=present
   with_items: "{{req_groups}}"
 
 # somehow this task does not work well to remove users and therefore
 # one should use it to remove users
-- name: adding unexisting users
+- name: adding unexisting user accounts
   user:
     name: "{{item.name}}"
     state: "{{item.state | default('present')}}"
-    append: "{{item.append | default('no')}}"
+    append: "{{item.append | default('yes')}}"
+
     # add user to comma-delimited list of groups
     groups: "{{item.groups|default('')}}"
-    # groups: "{{item.groups|join(',')|default('')}}"
-    # groups: "{{','.join(item.groups)}}"
-    # groups: "{% {{','.join(item.groups)}} if item.groups is defined else {{''}} %}"
-    # groups: "{{','.join(item.groups) | default('')}}"
     comment: "{{item.comment | default(None)}}"
     createhome: "{{item.createhome | default('yes')}}"
     password: "{{item.password | default('*')}}"
@@ -53,18 +42,53 @@
   # no need to use keys from a gw device, ssh agent forwarding should be used
   # instead
 - name: fetch the ssh public keys of every account to control machine
-  fetch: src="{{item.home | default('/home/' + item.name)}}/.ssh/{{item.name}}_{{ansible_hostname}}.pub" dest="{{private_dir}}/public_keys/" flat=yes
+  fetch:
+    src: "{{item.home | default('/home/' + item.name)}}/.ssh/{{item.name}}_{{ansible_hostname}}.pub"
+    dest: "{{private_dir}}/public_keys/"
+    flat: yes
   with_items: "{{users}}"
-  when: ansible_distribution != "OpenWrt"
+  when: ansible_distribution != "OpenWrt" and (item.generate_ssh_key is defined or item.generate_ssh_key is true)
 
-- name: create a .ssh directory in each user account
-  file: owner="{{item.name}}" group="{{item.name}}" path="{{item.home | default('/home/' + item.name) ~ '/.ssh'}}" state=directory mode=700
-  with_items: "{{users}}"
-  when: item.system is not defined or item.system == false
+  # personalise homedir with directories, /etc/skel could have been use but this
+  # is useful when you do not have control over homedirs template.
+- block:
+    - name: create a .ssh directory in each user account
+      file:
+        owner: "{{item.name}}"
+        group: "{{item.name}}"
+        path: "{{item.home | default('/home/' + item.name) ~ '/.ssh'}}"
+        state: directory
+        mode: 0700
+      with_items: "{{users}}"
 
-- name: create a .ssh/controlmasters directory in each user account
-  file: owner="{{item.name}}" group="{{item.name}}" path="{{item.home | default('/home/' + item.name) ~ '/.ssh/controlmasters'}}" state=directory mode=700
-  with_items: "{{users}}"
+    - name: create a .ssh/controlmasters directory in each user account
+      file:
+        owner: "{{item.name}}"
+        group: "{{item.name}}"
+        path: "{{item.home | default('/home/' + item.name) ~ '/.ssh/controlmasters'}}"
+        state: directory
+        mode: 0700
+      with_items: "{{users}}"
+
+    - name: create a bin directory in each user account
+      file:
+        owner: "{{item.name}}"
+        group: "{{item.name}}"
+        path: "{{item.home | default('/home/' + item.name) ~ '/bin'}}"
+        state: directory
+        mode: 0700
+      with_items: "{{users}}"
+
+      # this is for temporary files ex: vim swap and backup file
+    - name: create a tmp directory in each user account
+      file:
+        owner: "{{item.name}}"
+        group: "{{item.name}}"
+        path: "{{item.home | default('/home/' + item.name) ~ '/tmp'}}"
+        state: directory
+        mode: 0700
+      with_items: "{{users}}"
+
   when: item.system is not defined or item.system == false
 
 # - name: source each user ssh config
@@ -73,58 +97,50 @@
 #   with_items: "{{users}}"
 
 - name: template a ~/.ssh/config in each user account
-  template: src=ssh.config.j2 dest="{{item.home | default('/home/' + item.name) ~ '/.ssh/config'}}" owner="{{item.name}}" group="{{item.name}}" mode=0600 backup=yes
+  template:
+    src: ssh.config.j2
+    dest: "{{item.home | default('/home/' + item.name) ~ '/.ssh/config'}}"
+    owner: "{{item.name}}"
+    group: "{{item.name}}"
+    mode: 0600
+    backup: yes
   with_items: "{{users}}"
-
-- name: create a bin directory in each user account
-  file: owner="{{item.name}}" group="{{item.name}}" path="{{item.home | default('/home/' + item.name) ~ '/bin'}}" state=directory mode=700
-  with_items: "{{users}}"
-  when: item.system is not defined or item.system == false
-
-  # this is for temporary files ex: vim swap and backup file
-- name: create a tmp directory in each user account
-  file: owner="{{item.name}}" group="{{item.name}}" path="{{item.home | default('/home/' + item.name) ~ '/tmp'}}" state=directory mode=700
-  with_items: "{{users}}"
-  when: item.system is not defined or item.system == false
 
   # each user have to install his previously generated git public key to
   # the git remote server before cloning the repo over ssh. This could be automated
   # for private git servers ( != bitbucket or github )
-
 - name: template a bash script to manually install dotfiles
-  template: src=inst_dotfiles.j2 dest="{{item.home | default('/home/' + item.name) ~ '/bin/inst_dotfiles.sh'}}" owner="{{item.name}}" group="{{item.name}}" mode=0700
+  template:
+    src: inst_dotfiles.j2
+    dest: "{{item.home | default('/home/' + item.name) ~ '/bin/inst_dotfiles.sh'}}"
+    owner: "{{item.name}}"
+    group: "{{item.name}}"
+    mode: 0700
   with_items: "{{users}}"
   when: item.dotfiles_ssh is defined
 
-- name: copy dotfiles from user control machine to target host user account
-  copy:
-    src: "{{item.dotfiles_src_path}}"
-    dest: "{{item.home | default('/home/' + item.name)}}"
-    force: yes
-    owner: "{{item.name}}"
-    group: "{{item.name}}"
+- name: sync dotfiles from user on control machine to target host user account
+  synchronize:
+    delete: yes
+    src: "{{item.home | default('/home/' + item.name) ~ '/dotfiles'}}"
+    dest: "{{item.home | default('/home/' + item.name) ~ '/dotfiles'}}"
   with_items: "{{users}}"
-  when: item.dotfiles_src_path is defined and item.system == false and ansible_host != "localhost"
+  when: item.sync_dotfiles == true and ansible_host != "localhost"
 
-- name: copy oh-my-zsh from user control machine to target host user account
-  copy:
-    src: "{{item.omzsh_src_path}}"
-    dest: "{{item.home | default('/home/' + item.name)}}"
-    force: yes
-    owner: "{{item.name}}"
-    group: "{{item.name}}"
+- name: sync oh-my-zsh from user on control machine to target host user account
+  synchronize:
+    delete: yes
+    src: "{{item.home | default('/home/' + item.name) ~ '/.oh-my-zsh'}}"
+    dest: "{{item.home | default('/home/' + item.name) ~ '/.oh-my-zsh'}}"
   with_items: "{{users}}"
-  when: item.omzsh_src_path is defined and item.system == false and ansible_host != "localhost"
+  when: item.sync_omyzsh == true and ansible_host != "localhost"
 
-- name: copy .vim directory from user control machine to target host user account
-  copy:
+- name: sync .vim directory from user control machine to target host user account
+  synchronize:
     src: "{{item.vimdir_src_path}}"
     dest: "{{item.home | default('/home/' + item.name)}}"
-    force: yes
-    owner: "{{item.name}}"
-    group: "{{item.name}}"
   with_items: "{{users}}"
-  when: item.vimdir_src_path is defined and item.system == false and ansible_host != "localhost"
+  when: item.sync_vimdir == true and ansible_host != "localhost"
 
 - name: create symlinks to dotfiles in user home directory
   file:
@@ -135,4 +151,4 @@
   with_nested:
     - "{{users}}"
     - "{{dotfiles}}"
-  when: item.dotfiles_src_path is defined and item.system == false
+  when: item.dotfiles_src_path is defined
