@@ -1,154 +1,28 @@
 ---
-- name: adding unexisting groups on target machines
-  group: name={{item}} state=present
-  with_items: "{{req_groups}}"
 
-# somehow this task does not work well to remove users and therefore
-# one should use it to remove users
-- name: adding unexisting user accounts
-  user:
-    name: "{{item.name}}"
-    state: "{{item.state | default('present')}}"
-    append: "{{item.append | default('yes')}}"
+- name: gather ansible_usergroups facts
+  usergroups:
 
-    # add user to comma-delimited list of groups
-    groups: "{{item.groups|default('')}}"
-    comment: "{{item.comment | default(None)}}"
-    createhome: "{{item.createhome | default('yes')}}"
-    password: "{{item.password | default('*')}}"
-    home: "{{item.home | default('/home/' + item.name)}}"
-    move_home: "{{item.move_home | default('no')}}"
-    non_unique: "{{item.non_unique | default('no')}}"
-    shell: "{{item.shell | default('/bin/bash')}}"
-    system: "{{item.system | default('no')}}"
-    # ssh defaults (a key is generated in each accounts)
-    generate_ssh_key: "{{item.gen_ssh_key | default('no')}}"
-    ssh_key_passphrase: "{{item.ssh_key_passphrase | default('q1w2e3')}}"
-    ssh_key_type: rsa
-    ssh_key_bits: 2048
-    ssh_key_file: ".ssh/{{item.name}}_{{ansible_hostname}}"
-    update_password: "{{item.update_password | default('on_create')}}"
-  with_items: "{{users}}"
-  when: item.name != 'root'
+  # manage users for each usersgroups
+- include: users.yml
+  with_items: "{{usergroups}}"
+  loop_control:
+    loop_var: usergroup
 
-  # taken literaly from the ansible manual
-- name: Install public ssh keys for each users (for remote management)
-  authorized_key: "user={{item.0.name}} key='{{lookup('file', item.1)}}'"
-  with_subelements:
-    - "{{users}}"
-    - authorized
-  when: authorized is defined and ansible_distribution != "OpenWrt"
+# # refresh facts in case new users are added
+# - include: ansible_usergroups_facts.yml
 
-  # no need to use keys from a gw device, ssh agent forwarding should be used
-  # instead
-- name: fetch the ssh public keys of every account to control machine
-  fetch:
-    src: "{{item.home | default('/home/' + item.name)}}/.ssh/{{item.name}}_{{ansible_hostname}}.pub"
-    dest: "{{private_dir}}/public_keys/"
-    flat: yes
-  with_items: "{{users}}"
-  when: ansible_distribution != "OpenWrt" and (item.generate_ssh_key is defined or item.generate_ssh_key is true)
+- debug: var=ansible_usergroups
+  when: users_debug
 
-  # personalise homedir with directories, /etc/skel could have been use but this
-  # is useful when you do not have control over homedirs template.
-- block:
-    - name: create a .ssh directory in each user account
-      file:
-        owner: "{{item.name}}"
-        group: "{{item.name}}"
-        path: "{{item.home | default('/home/' + item.name) ~ '/.ssh'}}"
-        state: directory
-        mode: 0700
-      with_items: "{{users}}"
+- debug: var=usergroup.key
+  with_dict: "{{ansible_usergroups}}"
+  when: users_debug and usergroup.key not in users_exclusive_usergroups_exceptions and usergroup.key not in usergroups|map(attribute='name')|list
+  loop_control:
+    loop_var: usergroup
 
-    - name: create a .ssh/controlmasters directory in each user account
-      file:
-        owner: "{{item.name}}"
-        group: "{{item.name}}"
-        path: "{{item.home | default('/home/' + item.name) ~ '/.ssh/controlmasters'}}"
-        state: directory
-        mode: 0700
-      with_items: "{{users}}"
-
-    - name: create a bin directory in each user account
-      file:
-        owner: "{{item.name}}"
-        group: "{{item.name}}"
-        path: "{{item.home | default('/home/' + item.name) ~ '/bin'}}"
-        state: directory
-        mode: 0700
-      with_items: "{{users}}"
-
-      # this is for temporary files ex: vim swap and backup file
-    - name: create a tmp directory in each user account
-      file:
-        owner: "{{item.name}}"
-        group: "{{item.name}}"
-        path: "{{item.home | default('/home/' + item.name) ~ '/tmp'}}"
-        state: directory
-        mode: 0700
-      with_items: "{{users}}"
-
-  when: item.system is not defined or item.system == false
-
-# - name: source each user ssh config
-#   include_vars: "{{private_dir}}/users/{{item.name}}_ssh_config.yml"
-#   ignore_errors: yes
-#   with_items: "{{users}}"
-
-- name: template a ~/.ssh/config in each user account
-  template:
-    src: ssh.config.j2
-    dest: "{{item.home | default('/home/' + item.name) ~ '/.ssh/config'}}"
-    owner: "{{item.name}}"
-    group: "{{item.name}}"
-    mode: 0600
-    backup: yes
-  with_items: "{{users}}"
-
-  # each user have to install his previously generated git public key to
-  # the git remote server before cloning the repo over ssh. This could be automated
-  # for private git servers ( != bitbucket or github )
-- name: template a bash script to manually install dotfiles
-  template:
-    src: inst_dotfiles.j2
-    dest: "{{item.home | default('/home/' + item.name) ~ '/bin/inst_dotfiles.sh'}}"
-    owner: "{{item.name}}"
-    group: "{{item.name}}"
-    mode: 0700
-  with_items: "{{users}}"
-  when: item.dotfiles_ssh is defined
-
-- name: sync dotfiles from user on control machine to target host user account
-  synchronize:
-    delete: yes
-    src: "{{item.home | default('/home/' + item.name) ~ '/dotfiles'}}"
-    dest: "{{item.home | default('/home/' + item.name) ~ '/dotfiles'}}"
-  with_items: "{{users}}"
-  when: item.sync_dotfiles == true and ansible_host != "localhost"
-
-- name: sync oh-my-zsh from user on control machine to target host user account
-  synchronize:
-    delete: yes
-    src: "{{item.home | default('/home/' + item.name) ~ '/.oh-my-zsh'}}"
-    dest: "{{item.home | default('/home/' + item.name) ~ '/.oh-my-zsh'}}"
-  with_items: "{{users}}"
-  when: item.sync_omyzsh == true and ansible_host != "localhost"
-
-- name: sync .vim directory from user control machine to target host user account
-  synchronize:
-    src: "{{item.vimdir_src_path}}"
-    dest: "{{item.home | default('/home/' + item.name)}}"
-  with_items: "{{users}}"
-  when: item.sync_vimdir == true and ansible_host != "localhost"
-
-- name: create symlinks to dotfiles in user home directory
-  file:
-    state: link
-    src: "{{item[0].home | default('/home/' + item[0].name)}}/dotfiles/{{item[1]}}"
-    path: "{{item[0].home | default('/home/' + item[0].name)}}/.{{item[1]}}"
-    force: yes
-  with_nested:
-    - "{{users}}"
-    - "{{dotfiles}}"
-  when: item.dotfiles_src_path is defined
+- include: groupdel.yml
+  with_dict: "{{ansible_usergroups}}"
+  when: users_exclusive_usergroups and usergroup.key not in users_exclusive_usergroups_exceptions and usergroup.key not in usergroups|map(attribute='name')|list
+  loop_control:
+    loop_var: usergroup

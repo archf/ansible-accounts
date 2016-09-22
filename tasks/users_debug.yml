@@ -1,0 +1,7 @@
+---
+
+# print debug information for user management
+
+- debug: var=groups_dir
+- debug: var=users
+- debug: var=new_users.results

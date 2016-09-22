@@ -1,115 +1,100 @@
 ---
-# An external directory containing sensitive data.
-private_dir: "{{ playbook_dir }}/private"
 
-# SSH configuration defaults.
-user_ssh_config_defaults:
-  ControlPersist: 120s
-  ControlMaster: auto
-  ControlPath: '~/.ssh/controlmasters/%r@%h:%p'
+# An external directory containing sensitive data (group profiles, public ssh
+# keys, users's ssh_config, ...etc.
+groups_dir: "{{ playbook_dir }}/private/groups"
 
-# list of groups to create.
-req_groups: []
+# Will include a `debug.yml` task file which will print variable information.
+users_debug: no
 
-# List of user accounts to create.
-users: []
+# Don't generate private ssh key in user accounts on every machine, consider
+# agent forwarding instead.
+# Use this in group_vars to toggle ssh_key creation in a group of hosts.
+users_generate_ssh_keys: no
 
-# User accounts and group removal. Not implemented yet.
-users_removed: []
-groups_removed: []
+# SSH key rotation is disabled by default.
+users_rotate_ssh_keys: no
 
-# This is the list of files to symlinks to your dotfiles repo.
-# By default, dotfiles directory is expected to be ~/home/<user>/dotfiles>.
-dotfiles:
-  - vimrc
-  - bashrc
-  - gitconfig
-  - git_template
-  - profile
-  - tmux.conf
-  - zshrc
-  - zprofile
-  - ansible.cfg
-  - urlview
+# Max age of keys for ssh_rotation. This is a time specification that must be
+# compatbile with the find module.
+users_ssh_key_max_age: 60d
 
-# Here are few examples.
-# users:
-#     # here's the quick way
-#   - name: "foo"
-#     comment: "FirstName LastName"      # (Optional) User Full name
-#     groups: 'adm,wheel,lp,users'  Defaults to ''
-#     password: "$6$...." # Initial user password.
-#     shell: "/bin/zsh"   # (Optional) Defaults to /bin/bash
+# Default ssh key domain. Default key is the concatenation of the username and
+# this value. For public key to be propagated to the right machines, it should
+# match the 'ansible_domain' fact and thus hint wich realm the key gives access
+# to.
+users_domain: ""
 
-#     # sync dirs from user accounts on control machine
-#     sync_dotfiles: yes
-#     sync_omyzsh: yes
-#     sync_vimdir: yes
+# Configure '/etc/skel' facility
+users_configure_skeleton: no
 
-#     # Keys to add to authorized_keys
-#     authorized:
-#       - "{{ private_dir }}/public_keys/foo_pubkkey.pub"
+# If yes, 'usersgroups' are exclusive. That means that all unstated unix user
+# groups in play variable will deleted along with all it's members at the exception of
+# group `nogroup`.
+users_exclusive_usergroups: no
 
-#     # Some hosts to template the user's ssh_config. All key must be valid
-#     # ssh_config options. This optional and ansible will not fail if omitted.
-#     ssh_config:
-#       - Host: bitbucket.org
-#         User: git
-#         ForwardX11: no
-#         PreferredAuthentications: publickey
-#         ControlMaster: no
+# List of 'usergroups' that will never be removed
+users_exclusive_usergroups_exceptions:
+  - vagrant
+  - nogroup
 
-#       - Host: github.com
-#         User: git
-#         ForwardX11: no
-#         PreferredAuthentications: publickey
-#         ControlMaster: no
+# If yes, group members are exclusive. That means that all unstated group
+# members in play variables will deleted at the exception of user `nobody`.
+users_exclusive_groupmembers: no
 
-#     # here's the long way
-#   - name: "bar"
-#     comment: "bla"      # (Optional) Defaults to None, User Full name
-#     groups: 'adm,wheel,lp,users'  Defaults to ''
-#     password: "$6$...." # Initial user password.
+# Default args for the user module and sensible defaults for other role
+# features on a per user accounts basis. Override these on a per user basis
+# inside the 'users.yml' file of the usergroup.
+users_defaults:
+  state: present
+  # fixme: task should generate something random per user, register it, and send to user by mail.
+  password: "changeme" # Initial user password.
+  shell: "/bin/bash"
+  system: no
 
-#     shell: "/bin/bash"  # (Optional) Defaults to /bin/bash
-#     system: no          # (Optional) Defaults to no, System User
-#     append: no          # (Optional) Default to yes, Append to group
-#     update_password: on_create # (Optional) default to on_create (will change passwd if they differ
-#     home: "/home/bar"   # (Optional) Defaults to /home/<username>
-#     move_home: no       # (Optional) Defaults to no
-#     non_unique: no      # (Optional) Defaults to no , force uid to non-unique value
+  groups: omit
+  append: yes         # Append to group
 
-#     # sync dirs from user accounts on control machine
-#     sync_dotfiles: no
-#     sync_omyzsh: no
-#     sync_vimdir: no
+  update_password: on_create # Default to 'on_create' (will change passwd if they differ)
 
-#     # Keys to add to authorized_keys
-#     gen_ssh_key: yes    # (Optional) Defaults to no
-#     authorized:
-#       - "path to ssh-key-1"
-#       - "path to ssh-key-2"
+  # This 'home' variable is the path prefix to the directory that will contain
+  # a user account. If you work on Solaris you could set this to
+  # '/export/home'.
+  home: '/home'
 
-#     # Some hosts to template the user's ssh_config. All key must be valid
-#     # ssh_config options. This optional and ansible will not fail if omitted.
-#     ssh_config:
-#       - Host: bitbucket.org
-#         User: git
-#         ForwardX11: no
-#         PreferredAuthentications: publickey
-#         ControlMaster: no
+  # Module defaults
+  createhome: yes     # Defaults to yes
+  move_home: no       # Defaults to no
+  non_unique: no      # Defaults to no
 
-#       - Host: github.com
-#         User: git
-#         ForwardX11: no
-#         PreferredAuthentications: publickey
-#         ControlMaster: no
+  # Set the amount of days a password can remain inactive after expiration.
+  # This is passed to the 'inactive' options of 'passwd' command.
+  inactive: 365
 
-# # Add groups in this fashion.
-# groups:
-#   - name: "bing"
-#     gid: 2000           # (Optional)
-#     system: no          # (Optional)
-#   - name: "bang"
-#     gid: 4000           # (Optional)
-#     system: no          # (Optional)
+  # SSH configuration defaults.
+  # fixme: task should generate something random, register it, and send to user by mail.
+  ssh_key_passphrase: q1w2e3
+  ssh_key_type: rsa
+  ssh_key_bits: 2048
+
+  # Homedir skeleton.
+  skel:
+    - '.ssh/controlmasters'
+    - '.ssh/old_keys'
+    - 'bin'
+    - 'tmp'
+
+  # Values for ~/.ssh/config. Those are for a "Host *" clause at the top and
+  # will be applied to every users. This doesn't prevent you from having
+  # multiple "Host *" statements under it that will supersede this one. I think
+  # those are acceptable sane defaults.
+
+  ssh_config:
+    ServerAliveInterval: 41
+    ControlPersist: 120s
+    ControlMaster: auto
+    ControlPath: '~/.ssh/controlmasters/%r@%h:%p'
+
+  # This is the list of files to symlinks to your dotfiles repo. While empty,
+  # you can change if you know users share a common set of dotfiles.
+  dotfiles_symlinks: []

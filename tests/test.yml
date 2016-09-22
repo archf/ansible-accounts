@@ -1,0 +1,12 @@
+---
+- hosts: all
+  gather_facts: no
+
+  roles:
+    - bootstrap
+
+- hosts: all
+  become: true
+
+  roles:
+    - accounts

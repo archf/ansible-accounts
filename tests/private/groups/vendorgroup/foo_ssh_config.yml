@@ -1,0 +1,20 @@
+---
+
+ssh_config:
+  - Host: bitbucket.org
+    User: git
+    ForwardX11: no
+    PreferredAuthentications: publickey
+    ControlMaster: no
+
+  - Host: github.com
+    User: git
+    ForwardX11: no
+    PreferredAuthentications: publickey
+    ControlMaster: no
+
+  - Host: "*lb-*"
+    Hostname: "%h.lb.labfqdn"
+    ForwardAgent: yes
+    StrictHostKeyChecking: yes
+    ProxyCommand: ssh -W %h:%p jumphost

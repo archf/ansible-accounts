@@ -1,18 +1,19 @@
+{% set ssh_config = item.ansible_facts.ssh_config %}
+{% set username = item.item.name %}
 # {{ ansible_managed }}
 
-# This is a user specific ssh_config file.
-
-### global: see file defaults/main.yml
+### Global defaults
 
 Host *
-  IdentityFile ~/.ssh/{{ item.name }}_{{ ansible_hostname }}
-{% for key, value in user_ssh_config_defaults.iteritems() %}
+  IdentityFile ~/.ssh/{{ username }}.{{ ansible_domain }}
+{% for key, value in users_defaults.ssh_config.iteritems() %}
   {{key}} {{value}}
 {% endfor %}
 
-### per hosts conf: see <user>_ssh_config.yml
+### per host//match patterns configuration
+###  see file on control machine: groups/{{usergroup.name}}/{{username}}_ssh_config.yml
 
-{% for config in item.ssh_config %}
+{% for config in ssh_config %}
 {% if config.Host is defined %}
 Host {{config.Host}}
 {% else %}

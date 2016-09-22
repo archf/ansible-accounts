@@ -1,0 +1,56 @@
+---
+
+users:
+
+  # to test some features such as dotfiles syncing and symlinking. Add here a
+  # user existing on the control machine.
+  - name: archf
+    groups:
+      - adm
+      - lp
+      - users
+    comments: 'archf account'
+    shell: "/bin/zsh"
+    ssh_domains:
+      - company.domain
+
+    dotfiles_dir: dotfiles
+    omyzsh_dir: .oh-my-zsh
+    vim_dir: .vim
+
+    dotfiles_symlinks:
+      - vimrc
+      - bashrc
+      - zshrc
+      - gitconfig
+      - git_template
+      - profile
+      - zprofile
+      - tmux.conf
+      - ansible.cfg
+      - ctags
+      - pypirc
+
+  - name: foo
+    groups:
+      - adm
+      - lp
+      - users
+    comments: 'foo account'
+    shell: "/bin/zsh"
+    ssh_domains:
+      - company.domain
+
+  - name: bar
+    ssh_domains:
+      - lan
+      - example.com
+    comments: 'bar user'
+
+  - name: baz
+    groups:
+      - users
+    ssh_domains:
+      - lan
+      - example.org
+    comments: 'baz user'

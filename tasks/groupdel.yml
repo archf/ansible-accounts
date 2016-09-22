@@ -1,0 +1,20 @@
+---
+
+# delete all group members
+- include: groupdel_debug.yml
+  when: users_debug
+
+- name: delete all '{{usergroup.key}}" users
+  user:
+    # account name
+    name: "{{item}}"
+    # userdel --remove behavior (Files in the user's home directory will be
+    # removed along with the home directory itself and the user's mail spool)
+    remove: yes
+  with_items: "{{usergroup['value']['users']}}"
+  when: usergroup['value']['users']
+
+- name: delete unix group '{{usergroup.key}}
+  group:
+    name: "{{usergroup.key}}"
+    state: absent

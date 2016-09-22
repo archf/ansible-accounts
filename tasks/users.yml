@@ -1,0 +1,372 @@
+---
+
+- name: adding unix usergroup
+  group: name={{usergroup.name}} state=present gid={{usergroup.gid|default(omit)}}
+
+- name: source {{usergroup.name}} profile
+  include_vars: "{{groups_dir}}/{{usergroup.name}}/users.yml"
+
+# Cannot use {{usergroup.name}} inside include yet unless issue:
+# Loop control loop_var value is not always inherited inside nested includes
+# 17148 is resolved.
+
+- name: set 'usergroupname' fact (ansible issue 17148 workaround)
+  set_fact:
+    usergroupname: "{{usergroup.name}}"
+
+# todo:
+# - name: generate a random password hash per managed user
+#   set_fact:
+#     managed_user: "{{users|foo}}"
+
+#   - name: register ssh_key_passphrase
+#   - name: send new private ssh key name by email
+#   - name: send new key passphrase in separate mail
+
+# useful when you do not have control over '/etc/skel' template.
+- name: scaffold '/etc/skel'
+  file:
+    owner: "root"
+    group: "root"
+    path: "/etc/skel/{{item}}"
+    state: directory
+    mode: 0700
+  # ignore errors when invoking with ansible-playbook with '-C'
+  # ignore_errors: true
+  with_items: "{{users_defaults.skel}}"
+  when: users_configure_skeleton
+
+# somehow this task does not work well to remove users and therefore
+# one should use it to remove users
+- name: adding user accounts
+  user:
+    # account username
+    name: "{{item.name}}"
+    # full name
+    comment: "{{item.comment|default(omit)}}"
+    state: "{{item.state|default(users_defaults.state)}}"
+    shell: "{{item.shell|default(users_defaults.shell)}}"
+    system: "{{item.system|default(users_defaults.system)}}"
+
+    # add user to comma-delimited list of groups
+    groups: "{{ item.groups|join(',') ~ ',' ~ usergroup.name if item.groups is defined else usergroup.name }}"
+    append: "{{item.append|default(users_defaults.append)}}"
+
+    # sets the user's primary group
+    # this will only set the users'gid, group name is passed to '-g' options of
+    # useradd
+    group: "{{usergroup.name}}"
+
+    password: changeme
+    # password: "{{item.password|default('*')}}"
+    update_password: "{{item.update_password|default(users_defaults.update_password)}}"
+
+    createhome: "{{item.createhome|default(users_defaults.createhome)}}"
+    home: "{{item.home|default(users_defaults.home)}}/{{item.name}}"
+    move_home: "{{item.move_home|default(users_defaults.move_home)}}"
+    non_unique: "{{item.non_unique|default(users_defaults.non_unique)}}"
+
+    # ssh
+    ssh_key_passphrase: "{{item.ssh_key_passphrase|default(users_defaults.ssh_key_passphrase)}}"
+    ssh_key_type: "{{item.ssh_key_type|default(users_defaults.ssh_key_type)}}"
+    ssh_key_bits: "{{item.ssh_key_bits|default(users_defaults.ssh_key_bits)}}"
+
+    # keyname is forged in order to get <username>.<domain>
+    # for ansible_domain to return proper value, '/etc/hosts' must be
+    # configured first wiht something like
+    # 127.0.1.1       <hostname>.<domain> <hostname>
+    # for ansible_domain to return the domain.
+    ssh_key_file: "{{item.name}}.{{ansible_domain}}"
+    # keys are only generated on specified host groups
+    generate_ssh_key: "{{users_generate_ssh_keys}}"
+  with_items: "{{users}}"
+  when: item.name != 'root'
+  register: new_users
+
+- name: force expiration of new user's password
+  command: passwd -e {{item.item.name}} --inactive {{item.item.inactive|default(users_defaults.inactive)}}
+  with_items: "{{new_users.results}}"
+  when: item.changed
+
+# Personalise homedir with directories, /etc/skel could have been use but this
+# is useful when you do not have control over '/etc/skel' template.
+- name: scaffold directores in each user's home
+  file:
+    owner: "{{item[0].name}}"
+    group: "{{usergroup.name}}"
+    path: "{{item[0].home|default(users_defaults.home)}}/{{item[0].name}}/{{item[1]}}"
+    state: directory
+    mode: 0700
+  # ignore errors when invoking with ansible-playbook with '-C'
+  # ignore_errors: true
+  with_nested:
+    - "{{users}}"
+    - "{{users_defaults.skel}}"
+
+# run ansible with "-e 'users_debug=True'
+- include: users_debug.yml
+  when: users_debug
+
+##############################
+# ssh keys
+##############################
+
+# tasks when users_generate_ssh_keys
+- block:
+
+    - name: create directories for ssh_keys in '{{groups_dir}}/{{usergroup.name}}
+      file:
+        path: "{{groups_dir}}/{{usergroup.name}}/{{item}}"
+        state: directory
+      with_items:
+          - old_keys
+          - keys
+
+    - include: fetch_ssh_keys.yml
+
+    # result is returned in the 'files' list of dict
+    - name: register raw list of {{usergroup.name}} active ssh keys
+      find:
+        paths: "{{groups_dir}}/{{usergroup.name}}/keys"
+        patterns: '*.pub'
+      register: raw_active_ssh_keys
+
+    # all those are flat lists to allow usage built-in theory filters
+    # managed_ssh_keys: flat list of keys for all usergroup users as defined in
+    #                   users.yml and considering 'users_domain'.
+    # active_ssh_keys: flat list of keys already in place
+    - name: set {{usergroup.name}} 'managed' and 'active' ssh key lists
+      set_fact:
+        managed_ssh_keys: "{{users|get_managed_keys(users_domain)}}"
+        active_ssh_keys: "{{raw_active_ssh_keys.files|map(attribute='path')|get_ssh_keylist}}"
+
+    # unmanaged_ssh_keys: flat list of keys no longer required
+    - name: set {{usergroup.name}} 'unmanaged' lists
+      set_fact:
+        # this reads for example 'active_ssh_keys not in managed_ssh_keys'
+        unmanaged_ssh_keys: "{{active_ssh_keys|difference(managed_ssh_keys)}}"
+
+      # those are moved to old_keys dir just in case
+    - name: move away {{usergroup.name}} unmanaged public ssh keys on control machine
+      command: >
+        mv {{groups_dir}}/{usergroup.name}}/keys/{{item}}.pub
+          {{groups_dir}}/{{usergroup.name}}/old_keys/
+      with_items: "{{unmanaged_ssh_keys}}"
+      delegate_to: localhost
+      run_once: true
+
+    - name: set {{usergroup.name}} 'new_ssh_keys' lists w/o expired keys
+      set_fact:
+        new_ssh_keys: "{{managed_ssh_keys|difference(active_ssh_keys)|split_keynames}}"
+      when: not users_rotate_ssh_keys
+
+  when: users_generate_ssh_keys or users_rotate_ssh_keys
+
+- name: move unmanaged keypairs to user's ~/.ssh/old_keys on target
+  command: mv ~/.ssh/{{item}}* ~/.ssh/old_keys/
+  become_user: "{{item.split('.', 1)}}"
+  with_items: "{{unmanaged_ssh_keys}}"
+  when: users_generate_ssh_keys is defined and unmanaged_ssh_keys is defined
+
+# tasks when users_rotate_ssh_keys
+- block:
+    # result is returned in the 'files' list of dict
+    - name: register raw list of {{usergroup.name}} expired keys (older than {{ users_ssh_key_max_age }})
+      find:
+        age: "{{users_ssh_key_max_age}}"
+        paths: "{{groups_dir}}/{{usergroup.name}}/keys"
+        patterns: '*.pub'
+      register: raw_expired_ssh_keys
+
+    # expired_ssh_keys: list of keys that needs to be rotated
+    - name: set {{usergroup.name}} 'expired' ssh_key facts
+      set_fact:
+        expired_ssh_keys: "{{raw_expired_ssh_keys.files|map(attribute='path')|get_ssh_keylist}}"
+
+      # those are moved to old_keys dir just in case
+    - name: move away {{usergroup.name}} expired ssh keys on control machine
+      command: >
+        mv {{groups_dir}}/{usergroup.name}}/keys/{{item}}.pub
+          {{groups_dir}}/{{usergroup.name}}/old_keys/
+      with_items: "{{expired_ssh_keys}}"
+      delegate_to: localhost
+      run_once: true
+
+    - name: move expired keypairs to user's ~/.ssh/old_keys
+      command: mv ~/.ssh/{{item}}* ~/.ssh/old_keys/
+      become_user: "{{item.split('.', 1)}}"
+      with_items: "{{expired_ssh_keys|default(omit)}}"
+      # when: expired_ssh_keys is defined
+
+    - name: set {{usergroup.name}} 'new_ssh_keys' lists /w expired keys
+      set_fact:
+        new_ssh_keys: "{{managed_ssh_keys|difference(active_ssh_keys)|union(expired_ssh_key)|split_keynames}}"
+
+  when: users_rotate_ssh_keys and users_generate_ssh_keys
+
+# run ansible with "-e 'users_debug=True'
+- include: ssh_key_debug.yml
+  when: users_debug and users_generate_ssh_keys is defined and unmanaged_ssh_keys is defined
+
+# generate, fetch and deploy ssh keys
+- block:
+
+    # Prior to executing this task, we have moved existing keypairs to avoid
+    # ssh-keygent runtime error while attempting to overwrite a keyfile. Be
+    # careful moving this task around. We can safely do an union because we
+    # registered expired key *after* deletion of unmanaged keypairs. We are now
+    # sure to not recreate an expired keys that became also unmanaged.
+    # However if examining lists content on check run '-C' will be slightly
+    # wrong.
+
+    # ssh-keygen reminder:
+    #    -N new_passphrase
+    #    -q quiet
+    #    -f filename
+  - name: generate new ssh keys
+    command: ssh-keygen -q -N 'changeme' -f ~/.ssh/{{item.0.user}}.{{item.1}}
+    become_user: "{{item.0.user}}"
+    with_subelements:
+      - "{{new_ssh_keys}}"
+      - ssh_domains
+
+    # fetch missing pub keys again prior to propagation
+  - include: fetch_ssh_keys.yml
+
+  - name: install public ssh keys on matching domains
+    authorized_key:
+      user: "{{item.0.name}}"
+      key: "'{{lookup('file', groups_dir ~ '/' ~ usergroup.name ~ item.1)}}'"
+      exclusive: yes
+    with_subelements:
+      - "{{users}}"
+      - ssh_domains
+    when: item.1 == ansible_fqdn
+
+  when: (users_generate_ssh_keys or users_rotate_ssh_keys) and new_ssh_keys is defined
+
+##################################################
+# ssh_config
+##################################################
+
+# http://docs.ansible.com/ansible/include_vars_module.html
+# can't assign to name before version 2.2
+# however every file content are available inside
+# sourced_ssh_configs.results[i].ansible_facts.ssh_config
+- name: source each user ssh config
+  include_vars: "{{groups_dir}}/{{usergroup.name}}/{{item.name}}_ssh_config.yml"
+  # ignore missing
+  ignore_errors: yes
+  with_items: "{{users}}"
+  register: sourced_ssh_configs
+
+  # no validation here, make sure of what you do
+- name: template a ~/.ssh/config in each user account
+  template:
+    src: ssh.config.j2
+    dest: "{{item.item.home|default(users_defaults.home)}}/{{item.item.name}}/.ssh/config"
+    owner: "{{item.item.name}}"
+    group: "{{usergroup.name}}"
+    mode: 0600
+    backup: yes
+  with_items: "{{sourced_ssh_configs.results}}"
+  when: item|succeeded
+
+##################################################
+# dotfiles
+##################################################
+
+# As each user might have to install his previously generated ssh public key to
+# the public git remote server before cloning the repo over ssh no route is
+# faster than the manual one.
+
+# This could be automated though for private servers != (bitbucket or github)
+# using the git module,.
+# todo: install dotfiles from private repository//mirror using the git module.
+
+# Alternatively, if target has no www access or for whatever other reasons,
+# you can than at least useful sync stuff from a dir on the control machine.
+
+- name: sync dotfiles to target host user account from control machine
+  synchronize:
+    delete: yes
+    src: "{{item.home|default(users_defaults.home)}}/{{item.name}}/{{item.dotfiles_dir}}"
+    dest: "{{item.home|default(users_defaults.home)}}/{{item.name}}/{{item.dotfiles_dir}}"
+  with_items: "{{users}}"
+  when: ansible_host != "localhost" and item.dotfiles_dir is defined and item.dotfiles_repo is undefined
+
+- name: pull dotfiles repo
+  git:
+    accept_hostkey: yes
+    clone: yes
+    recursive: yes
+    repo: "{{item.dotfiles_repo}}"
+    dest: "{{item.home|default(users_defaults.home)}}/{{item.name}}/dotfiles"
+  with_items: "{{users}}"
+  when: ansible_host != "localhost" and item.dotfiles_dir is undefined and item.dotfiles_repo is defined
+
+- name: sync oh-my-zsh to target host user account
+  synchronize:
+    delete: yes
+    src: "{{item.home|default(users_defaults.home)}}/{{item.name}}/{{item.omyzsh_dir}}"
+    dest: "{{item.home|default(users_defaults.home)}}/{{item.name}}/{{item.omyzsh_dir}}"
+  with_items: "{{users|selectattr('omyzsh_dir','defined')|list}}"
+  when: ansible_host != "localhost"
+
+- name: sync .vim directory to target host user account
+  synchronize:
+    delete: yes
+    src: "{{item.home|default(users_defaults.home)}}/{{item.name}}/{{item.vim_dir}}"
+    dest: "{{item.home|default(users_defaults.home)}}/{{item.name}}/{{item.vim_dir}}"
+  with_items: "{{users|selectattr('vim_dir','defined')|list}}"
+  when: ansible_host != "localhost"
+
+- name: symlink user's dotfiles (user defined symlinks)
+  file:
+    state: link
+    src: "{{item.0.home|default(users_defaults.home)}}/{{item.0.name}}/dotfiles/{{item.1}}"
+    path: "{{item.0.home|default(users_defaults.home)}}/{{item.0.name}}/.{{item.1}}"
+    force: yes
+  with_subelements:
+    - "{{users|selectattr('dotfiles_symlinks','defined')|list}}"
+    - dotfiles_symlinks
+
+- name: symlink user's dotfiles (default symlinks)
+  file:
+    state: link
+    src: "{{item.[0].home|default(users_defaults.home)}}/{{item.[0].name}}/dotfiles/{{item.1}}"
+    path: "{{item.[0].home|default(users_defaults.home)}}/{{item.[0].name}}/.{{item.1}}"
+    force: yes
+  with_nested:
+    - "{{users|selectattr('dotfiles_symlinks','defined')|list}}"
+    - "{{users_defaults.dotfiles_symlinks}}"
+  when: users_defaults.dotfiles_symlinks
+
+##################################################
+# users deletion
+##################################################
+
+# Delete all unmannaged users. We can only put this here to avoid reparsing
+# "{{groups_dir}}/{{usergroup.name}}/users.yml" a second time
+
+- block:
+
+  - name: delete unmanaged users
+    # user:
+    debug:
+      msg: "deleted user is {{item}}"
+    #   # account name
+    #   name: "{{item}}"
+    #   # userdel --remove behavior (Files in the user's home directory will be
+    #   # removed along with the home directory itself and the user's mail spool)
+    #   remove: yes
+    with_items: "{{ansible_usergroups[usergroup.name]['users']}}"
+    # ignore errors when usergroup.name doesn't exist (no unix group => dangling users)
+    ignore_errors: yes
+    when:  (users_exclusive_groupmembers and item not in users|map(attribute='name')|list)
+    # register: userdel_errors
+
+#     delete dangling users
+#   rescue:
+#     - debug:
+#         var: userdel_errors

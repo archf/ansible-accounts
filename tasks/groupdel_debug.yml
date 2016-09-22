@@ -1,0 +1,8 @@
+---
+
+# print some debugging information relative to usergroups
+
+- debug: var=ansible_usergroups
+- debug: var=usergroup
+- debug: var=usergroup['key']
+- debug: var=usergroup['value']['users']

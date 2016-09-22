@@ -1,2 +1,5 @@
-tests/defaults.yml
-archf_ssh_config.yml
+*.pyc
+*.vagrant
+.ropeproject
+.cache
+env/*

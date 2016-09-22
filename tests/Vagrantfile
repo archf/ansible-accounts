@@ -1,0 +1,56 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+ROLE_NAME = 'users'
+
+# { name: 'm1', ip: '192.168.56.70', net: 'private_network', box: 'bento/centos-7.1'},
+hosts = [
+  { name: 'm1', ip: '192.168.56.71',
+    net: 'private_network', box: 'boxcutter/ubuntu1604'},
+]
+
+Vagrant.configure(2) do |config|
+
+   # if Vagrant.has_plugin?("vagrant-hostmanager")
+   #  config.hostmanager.enabled = true     # hook to Vagrant up and vagrant destroy
+   #  config.hostmanager.manage_host = true # allow /etc/hosts file updating
+   #  config.hostmanager.ignore_private_ip = false # disable using the private network IP address
+   #  config.hostmanager.include_offline = true # include box that are up or boxes with private IP
+  # end
+
+ N=hosts.length
+
+  (1..N).each do |machine_id|
+
+    config.vm.define ROLE_NAME + "-m#{machine_id}" do |node|
+
+      # box name
+      node.vm.box = hosts[machine_id - 1][:box]
+      # box hostname
+      node.vm.hostname = ROLE_NAME + '-' + hosts[machine_id - 1][:name]
+      # box extra interface
+      node.vm.network hosts[machine_id - 1][:net], ip: hosts[machine_id - 1][:ip]
+
+      # Only execute once the Ansible provisioner,
+      # when all the machines are up and ready.
+      if machine_id == N
+
+        node.vm.provision 'ansible' do |ansible|
+
+          # create ansible inventory groups to apply group_vars
+          # we use the box name
+          ansible.groups = {
+            "workstations" => [ROLE_NAME + '-' + hosts[0][:name]] }
+
+          # run the provisionner
+          ansible.verbose = 'v'
+          ansible.extra_vars = {users_debug: 'True'}
+          ansible.limit = 'all'
+          ansible.playbook = 'test.yml' # Elaborate test that shows all features
+        end #ansible vm.provision
+
+      end # machine_id if node.vm
+
+    end
+  end # each loop
+end #vagrant.configure

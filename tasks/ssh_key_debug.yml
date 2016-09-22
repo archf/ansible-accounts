@@ -1,0 +1,9 @@
+---
+
+# print debug information for ssh_key management
+
+- debug: var=users_default_domain
+- debug: var=managed_ssh_keys
+- debug: var=active_ssh_keys
+- debug: var=expired_ssh_keys
+- debug: var=new_ssh_keys
