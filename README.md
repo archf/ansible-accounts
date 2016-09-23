@@ -66,22 +66,23 @@ To add users, you need to configure usergroups inside `group_vars` or `host_vars
     - name: customergroup
 ```
 
-You can also tweak the behavior on a per group or per machine basis.
+You can also tweak the behavior on a per group or per machine basis. See
+'Default vars'.
 
-Then at the path defined by `groups_dir: "{{ playbook_dir }}/private/groups"`
-variable, create a folder by the `usergroup name` with content such as
+Then at the path defined by `groups_dir` variable (`{{ playbook_dir }}/private/groups`)
+create a folder by the `usergroup name` with content such as
 
 ```bash
 $ > tree
 .
+├── customergroup
+│   └── users.yml
 └── vendorgroup
-    ├── foo_ssh_config.yml
-    ├── keys
-    └── users.yml
+    └── users.yml
 ```
 
-for each of the groups you declared in `usergroups`. Play will fail if
-directory and/or files are missing for a given `usergroup`.
+for each of the groups you declared in `usergroups`. Other missing
+directories inside the group directory will be created by the play.
 
 **Usergroup members configuration**
 
@@ -91,7 +92,7 @@ to personalise a user account. Most settings in `users_defaults` can be
 overridden.
 
 ```shell
-$ > cat vendorgroup/users.yml                                                                                                                                             1 gh-pages-!?
+$ > cat vendorgroup/users.yml
 ---
 
 users:
@@ -140,11 +141,13 @@ users:
 
 **User ssh_configuration**
 
-Each user can optionaly manage their `ssh_config` with ansible. For example
-for the *foo* user above, the statements below will be transmuted into a
+Each user can optionaly manage their `ssh_config` with ansible. For that to happen,
+you have to create a `<username>_ssh_config.yml file inside the group directory.
+
+For example for the *foo* user above, the statements below will be transmuted into a
 `~/.ssh/config` Parameters from `users_defaults['ssh_config']` are also
 considered. This file is *totaly optional*. The playbook will not fail if it
-is missing for a given user.
+is missing for any given user.
 
 ```bash
 $ > cat vendorgroup/foo_ssh_config.yml
@@ -171,7 +174,7 @@ ssh_config:
     ProxyCommand: ssh -W %h:%p jumphost
 ```
 
-As you might noticed,
+As you might notice,
 
 * Every key must be a valid `ssh_config` option.
 * `Match` statements are supported.
@@ -205,7 +208,7 @@ users_debug: no
 # Don't generate private ssh key in user accounts on every machine, consider
 # agent forwarding instead.
 # Use this in group_vars to toggle ssh_key creation in a group of hosts.
-users_generate_ssh_key: no
+users_generate_ssh_keys: no
 
 # SSH key rotation is disabled by default.
 users_rotate_ssh_keys: no
@@ -223,10 +226,15 @@ users_domain: ""
 # Configure '/etc/skel' facility
 users_configure_skeleton: no
 
-# If yes, usersgroups are exclusive. That means that all unstated unix user
+# If yes, 'usersgroups' are exclusive. That means that all unstated unix user
 # groups in play variable will deleted along with all it's members at the exception of
 # group `nogroup`.
 users_exclusive_usergroups: no
+
+# List of 'usergroups' that will never be removed
+users_exclusive_usergroups_exceptions:
+  - vagrant
+  - nogroup
 
 # If yes, group members are exclusive. That means that all unstated group
 # members in play variables will deleted at the exception of user `nobody`.
@@ -289,95 +297,6 @@ users_defaults:
   # you can change if you know users share a common set of dotfiles.
   dotfiles_symlinks: []
 
-# mail configuration
-# This is being used bf the control machine so send a mail to inform user for
-# is new password for the account or ssh keys.
-# users_smtp_server:
-
-    # gnupg.conf
-
-# Here are few examples.
-# users:
-#     # here's the quick way
-#   - name: "foo"
-#     comment: "FirstName LastName"      # (Optional) User Full name
-#     groups: 'adm,wheel,lp,users'  Defaults to ''
-#     password: "$6$...." # Initial user password.
-#     shell: "/bin/zsh"   # (Optional) Defaults to /bin/bash
-
-#     # sync dirs from user accounts on control machine
-#     sync_dotfiles: yes
-#     sync_omyzsh: yes
-#     sync_vimdir: yes
-
-#     # Keys to add to authorized_keys
-#     authorized:
-#       - "{{ private_dir }}/public_keys/foo_pubkey.pub"
-
-#     # Some hosts to template the user's ssh_config. All key must be valid
-#     # ssh_config options. This optional and ansible will not fail if omitted.
-#     ssh_config:
-#       - Host: bitbucket.org
-#         User: git
-#         ForwardX11: no
-#         PreferredAuthentications: publickey
-#         ControlMaster: no
-
-#       - Host: github.com
-#         User: git
-#         ForwardX11: no
-#         PreferredAuthentications: publickey
-#         ControlMaster: no
-
-#     # here's the long way
-#   - name: "bar"
-#     comment: "bla"      # (Optional) Defaults to None, User Full name
-#     groups: 'adm,wheel,lp,users'  Defaults to ''
-#     password: "$6$...." # Initial user password.
-
-#     shell: "/bin/bash"  # (Optional) Defaults to /bin/bash
-#     system: no          # (Optional) Defaults to no, System User
-#     append: no          # (Optional) Default to yes, Append to group
-#     update_password: on_create # (Optional) default to on_create (will change passwd if they differ
-#     home: "/home/bar"   # (Optional) Defaults to /home/<username>
-#     move_home: no       # (Optional) Defaults to no
-#     non_unique: no      # (Optional) Defaults to no , force uid to non-unique value
-
-#     # sync dirs from user accounts on control machine
-#     sync_dotfiles: no
-#     sync_omyzsh: no
-#     sync_vimdir: no
-
-#     # Keys to add to authorized_keys
-#     gen_ssh_key: yes    # (Optional) Defaults to no
-#     authorized:
-#       - "path to ssh-key-1"
-#       - "path to ssh-key-2"
-
-#     # Some hosts to template the user's ssh_config. All key must be valid
-#     # ssh_config options. This optional and ansible will not fail if omitted.
-#     ssh_config:
-#       - Host: bitbucket.org
-#         User: git
-#         ForwardX11: no
-#         PreferredAuthentications: publickey
-#         ControlMaster: no
-
-#       - Host: github.com
-#         User: git
-#         ForwardX11: no
-#         PreferredAuthentications: publickey
-#         ControlMaster: no
-
-# # Add groups in this fashion.
-# groups:
-#   - name: "bing"
-#     gid: 2000           # (Optional)
-#     system: no          # (Optional)
-#   - name: "bang"
-#     gid: 4000           # (Optional)
-#     system: no          # (Optional)
-
 ```
 
 
@@ -399,7 +318,7 @@ Basic usage is:
 
 ### Install with git
 
-If you do not want a global install clone it to in your `roles_path`.
+If you do not want a global installation, clone it into your `roles_path`.
 
 ```shell
 git clone git@github.com:archf/ansible-accounts.git /path/to/roles_path
@@ -408,7 +327,7 @@ git clone git@github.com:archf/ansible-accounts.git /path/to/roles_path
 But I often add it as a submdule in a given `playbook_dir` repository.
 
 ```shell
-git submdule add git@github.com:archf/ansible-accounts.git playbook_dir/roles/accounts
+git submodule add git@github.com:archf/ansible-accounts.git <playbook_dir>/roles/accounts
 ```
 
 As the role is not managed by Ansible Galaxy, you do not have to specify the
@@ -430,6 +349,7 @@ None.
 ## Todo
 
   * manage sudoers
+  * generate random passwords using passlib and mail'em to user
 
 ## License
 
