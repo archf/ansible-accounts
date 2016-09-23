@@ -2,6 +2,12 @@
 
 A role to create and configure user accounts and groups on a host.
 
+## Requirements
+
+### Ansible version
+
+Minimum required ansible version is 2.1.
+
 ## Description
 
 
@@ -181,12 +187,6 @@ As you might notice,
 * Quote strings with special chars else yaml parsing will fail
 
 
-## Requirements
-
-### Ansible version
-
-Minimum required ansible version is 2.1.
-
 ## Role Variables
 
 ### Variables conditionally loaded
@@ -341,8 +341,7 @@ Basic usage is:
   - role: accounts
 ```
 
-
-## Dependencies
+## Ansible role dependencies
 
 None.
 
@@ -358,6 +357,14 @@ BSD.
 ## Author Information
 
 Felix Archambault.
+
+## Role stack
+
+This role was carefully selected to be part an ultimate deck of roles to manage
+your infrastructure.
+
+All roles' documentation is wrapped in this [convenient guide](http://127.0.0.1:8000/).
+
 
 ---
 This README was generated using ansidoc. This tool is available on pypi!

@@ -1,7 +1,7 @@
 ---
 
 github_account: archf
-requirements: []
+# requirements: []
 description: |
 
   ### Usergroups
@@ -182,3 +182,9 @@ description: |
 todos:
   - manage sudoers
   - generate random passwords using passlib and mail'em to user
+
+role_stack: |
+  This role was carefully selected to be part an ultimate deck of roles to manage
+  your infrastructure.
+
+  All roles' documentation is wrapped in this [convenient guide](http://127.0.0.1:8000/).
