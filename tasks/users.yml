@@ -15,11 +15,7 @@
     usergroupname: "{{usergroup.name}}"
 
 # todo:
-# - name: generate a random password hash per managed user
-#   set_fact:
-#     managed_user: "{{users|foo}}"
-
-#   - name: register ssh_key_passphrase
+#   - name: generate a random password hash per managed user
 #   - name: send new private ssh key name by email
 #   - name: send new key passphrase in separate mail
 
@@ -80,13 +76,21 @@
     # keys are only generated on specified host groups
     generate_ssh_key: "{{users_generate_ssh_keys}}"
   with_items: "{{users}}"
-  when: item.name != 'root'
   register: new_users
 
-- name: force expiration of new user's password
-  command: passwd -e {{item.item.name}} --inactive {{item.item.inactive|default(users_defaults.inactive)}}
+  # passwd implentation seems different on RedHat vs Debian.
+  # On centos 7.* for instance we get:
+  #       passwd: Cannot mix one of - l, -u, -d, -S and one of -i, -n, -w, -x.
+  # When mixing --expire and --inactive options.
+- name: force expiration of new user's password on non-Debian derivative nodes
+  command: passwd --expire {{item.item.name}}
   with_items: "{{new_users.results}}"
-  when: item.changed
+  when: ansible_os_family != "Debian" and item.changed
+
+- name: force expiration of new user's password on Debian derivative nodes
+  command: passwd --expire {{item.item.name}} --inactive {{item.item.inactive|default(users_defaults.inactive)}}
+  with_items: "{{new_users.results}}"
+  when: ansible_os_family == "Debian" and item.changed
 
 # Personalise homedir with directories, /etc/skel could have been use but this
 # is useful when you do not have control over '/etc/skel' template.
@@ -286,6 +290,9 @@
 
 # Alternatively, if target has no www access or for whatever other reasons,
 # you can than at least useful sync stuff from a dir on the control machine.
+
+- name: install rsync
+  package: name=rsync state=latest
 
 - name: sync dotfiles to target host user account from control machine
   synchronize:

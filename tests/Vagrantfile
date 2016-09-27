@@ -3,10 +3,11 @@
 
 ROLE_NAME = 'users'
 
-# { name: 'm1', ip: '192.168.56.70', net: 'private_network', box: 'bento/centos-7.1'},
 hosts = [
-  { name: 'm1', ip: '192.168.56.71',
-    net: 'private_network', box: 'boxcutter/ubuntu1604'},
+  {name: 'm1', ip: '192.168.56.71',
+   net: 'private_network', box: 'boxcutter/ubuntu1604', group: 'workstations'},
+  {name: 'm2', ip: '192.168.56.72',
+   net: 'private_network', box: 'bento/centos-7.1', group: 'workstations'}
 ]
 
 Vagrant.configure(2) do |config|
@@ -22,7 +23,8 @@ Vagrant.configure(2) do |config|
 
   (1..N).each do |machine_id|
 
-    config.vm.define ROLE_NAME + "-m#{machine_id}" do |node|
+    config.vm.define ROLE_NAME + "-" + hosts[machine_id - 1][:name] do |node|
+    # config.vm.define ROLE_NAME + "-m#{machine_id}" do |node|
 
       # box name
       node.vm.box = hosts[machine_id - 1][:box]
@@ -31,26 +33,44 @@ Vagrant.configure(2) do |config|
       # box extra interface
       node.vm.network hosts[machine_id - 1][:net], ip: hosts[machine_id - 1][:ip]
 
+      # avoid nating through localhost
+      # node.ssh.host = hosts[machine_id - 1][:ip]
+      # # node.ssh.port = 22
+      # node.ssh.guest_port = 22
+
       # Only execute once the Ansible provisioner,
       # when all the machines are up and ready.
       if machine_id == N
 
-        node.vm.provision 'ansible' do |ansible|
+        config.vm.provision 'ansible' do |ansible|
 
-          # create ansible inventory groups to apply group_vars
+          ansible.groups = {}
+          ansible.host_vars = {}
+
+          # create ansible inventory groups to allow group_vars
           # we use the box name
-          ansible.groups = {
-            "workstations" => [ROLE_NAME + '-' + hosts[0][:name]] }
+          for m in hosts do
+            if ansible.groups.has_key?(m[:group])
+              # append to list
+              ansible.groups[m[:group]].push(ROLE_NAME + '-' + m[:name])
+            else
+              # add new key
+              ansible.groups[m[:group]] = [ROLE_NAME + '-' + m[:name]]
+            end
+
+            ansible.host_vars[m[:name]] = {ansible_ssh_host:  m[:ip]}
+
+          end
 
           # run the provisionner
-          ansible.verbose = 'v'
-          ansible.extra_vars = {users_debug: 'True'}
+          # ansible.verbose = 'v'
+          # ansible.extra_vars = {users_debug: 'True'}
           ansible.limit = 'all'
-          ansible.playbook = 'test.yml' # Elaborate test that shows all features
+          ansible.playbook = 'test.yml'
         end #ansible vm.provision
 
       end # machine_id if node.vm
 
-    end
-  end # each loop
+    end # each loop
+  end
 end #vagrant.configure
