@@ -11,7 +11,7 @@
     - "{{users}}"
   when: users_default_domain is defined
 
-- name: fetch 'ssh_domains' public ssh keys back to control machine
+- name: fetch extra 'ssh_domains' public ssh keys back to control machine
   fetch:
     src: "{{item.0.home|default(users_defaults.home)}}/{{item.0.name}}/.ssh/{{item.0.name}}.{{item.1}}.pub"
     dest: "{{groups_dir}}/{{usergroupname}}/keys/"
