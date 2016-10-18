@@ -7,6 +7,8 @@ groups_dir: "{{ playbook_dir }}/private/groups"
 # Will include a `debug.yml` task file which will print variable information.
 users_debug: no
 
+users_usergroups: []
+
 # Don't generate private ssh key in user accounts on every machine, consider
 # agent forwarding instead.
 # Use this in group_vars to toggle ssh_key creation in a group of hosts.
@@ -55,7 +57,9 @@ users_defaults:
   groups: omit
   append: yes         # Append to group
 
-  update_password: on_create # Default to 'on_create' (will change passwd if they differ)
+  # Default to 'on_create' (will change passwd if they differ)
+  update_password: on_create
+  # update_password: always
 
   # This 'home' variable is the path prefix to the directory that will contain
   # a user account. If you work on Solaris you could set this to

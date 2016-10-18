@@ -53,7 +53,7 @@
     # useradd
     group: "{{usergroup.name}}"
 
-    password: changeme
+    # password: "changeme"
     # password: "{{item.password|default('*')}}"
     update_password: "{{item.update_password|default(users_defaults.update_password)}}"
 
@@ -82,15 +82,17 @@
   # On centos 7.* for instance we get:
   #       passwd: Cannot mix one of - l, -u, -d, -S and one of -i, -n, -w, -x.
   # When mixing --expire and --inactive options.
-- name: force expiration of new user's password on non-Debian derivative nodes
-  command: passwd --expire {{item.item.name}}
-  with_items: "{{new_users.results}}"
-  when: ansible_os_family != "Debian" and item.changed
 
-- name: force expiration of new user's password on Debian derivative nodes
-  command: passwd --expire {{item.item.name}} --inactive {{item.item.inactive|default(users_defaults.inactive)}}
-  with_items: "{{new_users.results}}"
-  when: ansible_os_family == "Debian" and item.changed
+# - name: force expiration of new user's password on non-Debian derivative nodes
+#   command: passwd --expire {{item.item.name}}
+#   with_items: "{{new_users.results}}"
+#   when: ansible_os_family != "Debian" and item.changed
+
+# - name: force expiration of new user's password on Debian derivative nodes
+#   command: passwd --expire {{item.item.name}}
+#   # command: passwd --expire {{item.item.name}} --inactive {{item.item.inactive|default(users_defaults.inactive)}}
+#   with_items: "{{new_users.results}}"
+#   when: ansible_os_family == "Debian" and item.changed
 
 # Personalise homedir with directories, /etc/skel could have been use but this
 # is useful when you do not have control over '/etc/skel' template.

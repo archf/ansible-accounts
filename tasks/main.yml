@@ -5,7 +5,7 @@
 
   # manage users for each usersgroups
 - include: users.yml
-  with_items: "{{usergroups}}"
+  with_items: "{{usergroups|default(users_usergroups)}}"
   loop_control:
     loop_var: usergroup
 
@@ -21,8 +21,12 @@
   loop_control:
     loop_var: usergroup
 
-- include: groupdel.yml
-  with_dict: "{{ansible_usergroups}}"
-  when: users_exclusive_usergroups and usergroup.key not in users_exclusive_usergroups_exceptions and usergroup.key not in usergroups|map(attribute='name')|list
-  loop_control:
-    loop_var: usergroup
+- block:
+
+  - include: groupdel.yml
+    with_dict: "{{ansible_usergroups}}"
+    when: usergroup.key not in users_exclusive_usergroups_exceptions and usergroup.key not in usergroups|map(attribute='name')|list
+    loop_control:
+      loop_var: usergroup
+
+  when: users_exclusive_usergroups
