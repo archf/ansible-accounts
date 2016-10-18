@@ -217,18 +217,18 @@ users_rotate_ssh_keys: no
 # compatbile with the find module.
 users_ssh_key_max_age: 60d
 
-# Default ssh key domain. Default key is the concatenation of the username and
-# this value. For public key to be propagated to the right machines, it should
-# match the 'ansible_domain' fact and thus hint wich realm the key gives access
-# to.
-users_domain: ""
+# Default ssh key domain. Default key name is the concatenation of the username
+# and this value. For public key to be propagated to the right machines, it
+# should match the 'ansible_domain' fact and thus hint wich realm the key gives
+# access to.
+users_default_domain: ""
 
 # Configure '/etc/skel' facility
 users_configure_skeleton: no
 
 # If yes, 'usersgroups' are exclusive. That means that all unstated unix user
-# groups in play variable will deleted along with all it's members at the exception of
-# group `nogroup`.
+# groups in play variable will be deleted along with all it's members at the
+# exception of group `nogroup`.
 users_exclusive_usergroups: no
 
 # List of 'usergroups' that will never be removed
