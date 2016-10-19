@@ -157,7 +157,7 @@
       command: >
         mv {{groups_dir}}/{usergroup.name}}/keys/{{item}}.pub
           {{groups_dir}}/{{usergroup.name}}/old_keys/
-      with_items: "{{unmanaged_ssh_keys}}"
+      with_items: "{{unmanaged_ssh_keys|default(omit)}}"
       delegate_to: localhost
       run_once: true
 
@@ -168,6 +168,7 @@
 
   when: users_generate_ssh_keys or users_rotate_ssh_keys
 
+  # fixme: warning when undefined new_ssh_keys
 - name: move unmanaged keypairs to user's ~/.ssh/old_keys on target
   command: mv ~/.ssh/{{item}}* ~/.ssh/old_keys/
   become_user: "{{item.split('.', 1)}}"
@@ -194,7 +195,7 @@
       command: >
         mv {{groups_dir}}/{usergroup.name}}/keys/{{item}}.pub
           {{groups_dir}}/{{usergroup.name}}/old_keys/
-      with_items: "{{expired_ssh_keys}}"
+      with_items: "{{expired_ssh_keys|default(omit)}}"
       delegate_to: localhost
       run_once: true
 
@@ -229,6 +230,8 @@
     #    -N new_passphrase
     #    -q quiet
     #    -f filename
+
+    # fixme: warning when undefined new_ssh_keys
   - name: generate new ssh keys
     command: ssh-keygen -q -N 'changeme' -f ~/.ssh/{{item.0.user}}.{{item.1}}
     become_user: "{{item.0.user}}"
@@ -245,7 +248,7 @@
       key: "'{{lookup('file', groups_dir ~ '/' ~ usergroup.name ~ users_default_domain)}}'"
       exclusive: yes
     with_items:
-      - "{{users}}"
+      - "{{users|default(omit)}}"
     when: users_default_domain is defined and users_default_domain == ansible_fqdn
 
   - name: install ssh_domains extra public ssh keys on matching domains
@@ -254,11 +257,11 @@
       key: "'{{lookup('file', groups_dir ~ '/' ~ usergroup.name ~ item.1)}}'"
       exclusive: yes
     with_subelements:
-      - "{{users|selectattr('dotfiles_symlinks','defined')|list}}"
+      - "{{users|selectattr('ssh_domains','defined')|list}}"
       - ssh_domains
     when: item.1 == ansible_fqdn
 
-  when: (users_generate_ssh_keys or users_rotate_ssh_keys) and new_ssh_keys is defined
+  when: ((users_generate_ssh_keys or users_rotate_ssh_keys) and new_ssh_keys is defined)
 
 ##################################################
 # ssh_config
