@@ -11,7 +11,7 @@ Host *
 {% endfor %}
 
 ### per host//match patterns configuration
-###  see file on control machine: groups/{{usergroup.name}}/{{username}}_ssh_config.yml
+###  see file on control machine: {{groups_dir}}/{{username}}_ssh_config.yml
 
 {% for config in ssh_config %}
 {% if config.Host is defined %}

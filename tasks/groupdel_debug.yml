@@ -1,8 +1,6 @@
 ---
 
-# print some debugging information relative to usergroups
+# print debugging infos when deleting unix groups
 
 - debug: var=ansible_usergroups
 - debug: var=usergroup
-- debug: var=usergroup['key']
-- debug: var=usergroup['value']['users']

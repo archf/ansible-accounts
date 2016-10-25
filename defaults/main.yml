@@ -4,8 +4,10 @@
 # keys, users's ssh_config, ...etc.
 groups_dir: "{{ playbook_dir }}/private/groups"
 
-# Will include a `debug.yml` task file which will print variable information.
-users_debug: no
+# Include debugging tasks that prints variable information when adding and
+# removing unix groups.
+groupadd_debug: no
+groupdel_debug: no
 
 users_usergroups: []
 

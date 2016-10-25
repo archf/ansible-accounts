@@ -6,6 +6,14 @@
 - name: source {{usergroup.name}} profile
   include_vars: "{{groups_dir}}/{{usergroup.name}}/users.yml"
 
+- name: template {{usergroup.name}} sudoers entry
+  template:
+    src: sudoers.j2
+    dest: /etc/sudoers.d/{{usergroup.name}}
+    owner: root
+    group: root
+    validate: "visudo -cf %s"
+
 # Cannot use {{usergroup.name}} inside include yet unless issue:
 # Loop control loop_var value is not always inherited inside nested includes
 # 17148 is resolved.
@@ -34,7 +42,7 @@
 
 # somehow this task does not work well to remove users and therefore
 # one should use it to remove users
-- name: adding user accounts
+- name: adding user accounts (and register new_users facts)
   user:
     # account username
     name: "{{item.name}}"
@@ -109,9 +117,9 @@
     - "{{users}}"
     - "{{users_defaults.skel}}"
 
-# run ansible with "-e 'users_debug=True'
-- include: users_debug.yml
-  when: users_debug
+# run ansible with "-e 'groupadd_debug=True'
+- include: groupadd_debug.yml
+  when: groupadd_debug
 
 ##############################
 # ssh keys
@@ -211,9 +219,9 @@
 
   when: users_rotate_ssh_keys and users_generate_ssh_keys
 
-# run ansible with "-e 'users_debug=True'
+# run ansible with "-e 'groupadd_debug=True'
 - include: ssh_key_debug.yml
-  when: users_debug and users_generate_ssh_keys is defined and unmanaged_ssh_keys is defined
+  when: groupadd_debug and users_generate_ssh_keys is defined and unmanaged_ssh_keys is defined
 
 # generate, fetch and deploy ssh keys
 - block:
@@ -276,6 +284,7 @@
   # ignore missing
   ignore_errors: yes
   with_items: "{{users}}"
+  always_run: yes
   register: sourced_ssh_configs
 
   # no validation here, make sure of what you do
@@ -287,7 +296,7 @@
     group: "{{usergroup.name}}"
     mode: 0600
     backup: yes
-  with_items: "{{sourced_ssh_configs.results}}"
+  with_items: "{{sourced_ssh_configs.results|default(omit)}}"
   when: item|succeeded
 
 ##################################################

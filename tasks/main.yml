@@ -3,30 +3,42 @@
 - name: gather ansible_usergroups facts
   usergroups:
 
+  # add unix group for usergroup
   # manage users for each usersgroups
-- include: users.yml
-  with_items: "{{usergroups|default(users_usergroups)}}"
+- include: groupadd.yml
+  with_items: "{{usergroups|default(omit)}}"
   loop_control:
     loop_var: usergroup
 
-# # refresh facts in case new users are added
-# - include: ansible_usergroups_facts.yml
-
-- debug: var=ansible_usergroups
-  when: users_debug
-
-- debug: var=usergroup.key
+- debug: msg="Unix group '{{usergroup.key}}' will be removed"
   with_dict: "{{ansible_usergroups}}"
-  when: users_debug and usergroup.key not in users_exclusive_usergroups_exceptions and usergroup.key not in usergroups|map(attribute='name')|list
+  when: usergroups is defined and groupdel_debug and usergroup.key not in users_exclusive_usergroups_exceptions and usergroup.key not in usergroups|map(attribute='name')|list
   loop_control:
     loop_var: usergroup
 
 - block:
 
+  # removing unix groups when defined
   - include: groupdel.yml
     with_dict: "{{ansible_usergroups}}"
     when: usergroup.key not in users_exclusive_usergroups_exceptions and usergroup.key not in usergroups|map(attribute='name')|list
     loop_control:
       loop_var: usergroup
+
+  rescue:
+    # This action is dangerous... ask for user prompt
+    - pause:
+        prompt: |
+         "The variable 'usergroups' is undefined, and set
+         'users_exclusive_usergroups == yes'. Please confirm you want to
+         delete all unix groups. Press return to continue.
+         Press Ctrl+c and then 'a' to abort"
+
+    - name: delete unix group '{{usergroup.key}}
+      group:
+        name: "{{usergroup.key}}"
+        state: absent
+      with_dict: "{{ansible_usergroups}}"
+      when: item.key not in users_exclusive_usergroups_exceptions
 
   when: users_exclusive_usergroups

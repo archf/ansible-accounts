@@ -2,7 +2,7 @@
 
 # delete all group members
 - include: groupdel_debug.yml
-  when: groupdel_debug
+  when: users_debug
 
 - name: delete all '{{usergroup.key}}" users
   user:
