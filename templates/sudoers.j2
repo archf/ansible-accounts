@@ -1,5 +1,6 @@
 {% if "workstations" in group_names %}
 {{'%'}}{{usergroup.name}} ALL=(ALL) NOPASSWD: ALL
 {% elif usergroup.sudoers is defined and usergroup.sudoers %}
-{{'%'}}{{usergroup.name}} ALL=(ALL)
+{{'%'}}{{usergroup.name}} ALL=(ALL) ALL
 {% endif %}
+{# Defaults:%{{usergroup.name}} !requiretty #}

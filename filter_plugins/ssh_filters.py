@@ -69,7 +69,7 @@ def get_managed_keys(users, default_domain):
     Get a list of all managed keys.
 
     Managed keys are those defined in users.yml inside the 'users' variable.
-    Return a list of basename in the form <owner>.<domain>.
+    Return a list of basename in the form <owner>.<ssh_domain>.
     """
 
     if not isinstance(users, list):
@@ -78,8 +78,9 @@ def get_managed_keys(users, default_domain):
     r = []
 
     for user in users:
-        for domain in user["ssh_domains"]:
-            r.append(user["name"] + "." + domain)
+        if "ssh_domains" in user:
+            for domain in user["ssh_domains"]:
+                r.append(user["name"] + "." + domain)
 
     # second append the default domain if defined
     if default_domain:

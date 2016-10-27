@@ -2,21 +2,23 @@
 
 # user public ssh keys fetching
 
-- name: fetch {{users_default_domain}} public ssh keys back to control machine
+- name: fetch {{ansible_domain}} public ssh keys back to control machine
   fetch:
-    src: "{{item.home|default(users_defaults.home)}}/{{item.name}}/.ssh/{{item.name}}.{{users_default_domain}}.pub"
+    src: "{{item.home|default(users_defaults.home)}}/{{item.name}}/.ssh/{{item.name}}.{{ansible_domain}}.pub"
     dest: "{{groups_dir}}/{{usergroupname}}/keys/"
     flat: yes
   with_items:
     - "{{users}}"
-  when: users_default_domain is defined
 
 - name: fetch extra 'ssh_domains' public ssh keys back to control machine
   fetch:
     src: "{{item.0.home|default(users_defaults.home)}}/{{item.0.name}}/.ssh/{{item.0.name}}.{{item.1}}.pub"
     dest: "{{groups_dir}}/{{usergroupname}}/keys/"
     flat: yes
-  with_nested:
-    - "{{users}}"
+  # with_nested:
+  #   - "{{users}}"
+  #   - ssh_domains
+  with_subelements:
+    - "{{users|selectattr('ssh_domains','defined')|list}}"
     - ssh_domains
   when: item.1
