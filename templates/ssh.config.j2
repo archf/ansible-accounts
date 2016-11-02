@@ -10,8 +10,10 @@ Host *
   {{key}} {{value}}
 {% endfor %}
 
+{# generate more specific statements on machines of type workstations #}
+{% if users_generate_ssh_keys %}
 ### per host//match patterns configuration
-###  see file on control machine: {{groups_dir}}/{{username}}_ssh_config.yml
+### see file on control machine: {{groups_dir}}/{{username}}_ssh_config.yml
 
 {% for config in ssh_config %}
 {% if config.Host is defined %}
@@ -26,3 +28,4 @@ Match {{ config.Match }}
 {% endfor %}
 
 {% endfor %}
+{% endif %}
