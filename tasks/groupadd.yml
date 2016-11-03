@@ -65,8 +65,7 @@
     # useradd
     group: "{{usergroup.name}}"
 
-    password: "qazwrx12"
-    # password: "{{item.password|default('*')}}"
+    password: "{{item.password|default('*')}}"
     update_password: "{{item.update_password|default(users_defaults.update_password)}}"
 
     createhome: "{{item.createhome|default(users_defaults.createhome)}}"
