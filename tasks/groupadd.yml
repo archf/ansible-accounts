@@ -343,6 +343,8 @@
     delete: yes
     src: "{{item.home|default(users_defaults.home)}}/{{item.name}}/{{item.omyzsh_dir}}"
     dest: "{{item.home|default(users_defaults.home)}}/{{item.name}}/"
+    # do not preserve group as gid can be different
+    group: no
   remote_user: "{{item.name}}"
   become: no
   with_items: "{{users|selectattr('omyzsh_dir','defined')|list}}"
