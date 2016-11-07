@@ -164,7 +164,7 @@
   # those are moved to old_keys dir just in case
 - name: move away {{usergroup.name}} unmanaged public ssh keys on control machine
   command: >
-    mv {{groups_dir}}/{usergroup.name}}/keys/{{item}}.pub
+    mv {{groups_dir}}/{{usergroup.name}}/keys/{{item}}.pub
       {{groups_dir}}/{{usergroup.name}}/old_keys/
   with_items: "{{unmanaged_ssh_keys|default(omit)}}"
   delegate_to: localhost
@@ -178,7 +178,7 @@
   when: not users_rotate_ssh_keys
 
 - name: move unmanaged keypairs to user's ~/.ssh/old_keys on target
-  command: mv ~/.ssh/{{item}}* ~/.ssh/old_keys/
+  command: mv ~/.ssh/{{item}} ~/.ssh/old_keys/
   become_user: "{{item.split('.', 1)}}"
   with_items: "{{unmanaged_ssh_keys|default(omit)}}"
   when: users_generate_ssh_keys or users_rotate_ssh_keys
@@ -285,7 +285,7 @@
   # ignore missing
   ignore_errors: yes
   with_items: "{{users}}"
-  always_run: yes
+  check_mode: yes
   register: sourced_ssh_configs
 
   # no validation here, make sure of what you do

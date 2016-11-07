@@ -10,4 +10,6 @@
 - debug: var=ansible_domain
 - debug: msg="{{groups_dir}}/{{usergroup.name}}/keys"
 - debug: var=raw_active_ssh_keys
+- debug: var=managed_ssh_keys
+- debug: var=unmanaged_ssh_keys
 - debug: var=users_generate_ssh_keys
