@@ -60,8 +60,8 @@ description: |
   ```yaml
     usergroups:
       - name: vendorgroup
-        gid: 1001
         # gid is optional
+        gid: 1001
       - name: customergroup
   ```
 
