@@ -62,6 +62,8 @@ description: |
       - name: vendorgroup
         # gid is optional
         gid: 1001
+        # nopasswd is optional
+        nopasswd: ALL
       - name: customergroup
   ```
 

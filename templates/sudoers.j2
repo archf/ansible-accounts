@@ -1,5 +1,6 @@
-{% if "workstations" in group_names %}
-{{'%'}}{{usergroup.name}} ALL=(ALL) NOPASSWD: ALL
+{# sudoers file for a unix group #}
+{% if usergroup.nopasswd is defined %}
+{{'%'}}{{usergroup.name}} ALL=(ALL) NOPASSWD: {{usergroup.nopasswd}}
 {% elif usergroup.sudoers is defined and usergroup.sudoers %}
 {{'%'}}{{usergroup.name}} ALL=(ALL) ALL
 {% endif %}
