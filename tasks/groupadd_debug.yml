@@ -13,3 +13,8 @@
 - debug: var=managed_ssh_keys
 - debug: var=unmanaged_ssh_keys
 - debug: var=users_generate_ssh_keys
+
+# - debug: var=hostvars
+# - debug: var=group_names
+# - debug: var=groups
+# - debug: var=inventory_hostname

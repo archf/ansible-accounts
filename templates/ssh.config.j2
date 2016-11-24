@@ -1,11 +1,11 @@
 {% set ssh_config = item.ansible_facts.ssh_config %}
 {% set username = item.item.name %}
-# {{ ansible_managed }}
+# {{ansible_managed}}
 
 ### Global defaults
 
 Host *
-  IdentityFile ~/.ssh/{{ username }}.{{ ansible_domain }}
+  IdentityFile ~/.ssh/{{username}}.{{ansible_domain}}
 {% for key, value in users_defaults.ssh_config.iteritems() %}
   {{key}} {{value}}
 {% endfor %}
@@ -19,7 +19,7 @@ Host *
 {% if config.Host is defined %}
 Host {{config.Host}}
 {% else %}
-Match {{ config.Match }}
+Match {{config.Match}}
 {% endif %}
 {% for key, value in config|dictsort %}
 {% if key|lower != "host" and key|lower != 'match' %}
