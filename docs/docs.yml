@@ -1,7 +1,10 @@
 ---
 
 github_account: archf
-# requirements: []
+requirements: |
+  This roles contains tasks relying on the `synchronize` module (rsync) and
+  therefore it requires the `openssh` daemon to be running.
+
 description: |
 
   ### Usergroups
@@ -58,13 +61,13 @@ description: |
   To add users, you need to configure usergroups inside `group_vars` or `host_vars`.
 
   ```yaml
-    usergroups:
-      - name: vendorgroup
-        # gid is optional
-        gid: 1001
-        # nopasswd is optional
-        nopasswd: ALL
-      - name: customergroup
+  usergroups:
+    - name: vendorgroup
+      # gid is optional
+      gid: 1001
+      # nopasswd is optional
+      nopasswd: ALL
+    - name: customergroup
   ```
 
   You can also tweak the behavior on a per group or per machine basis. See

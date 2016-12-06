@@ -41,9 +41,6 @@
   with_items: "{{users_defaults.skel}}"
   when: users_configure_skeleton
 
-- name: install zsh
-  package: name=zsh state=latest
-
 # somehow this task does not work well to remove users and therefore
 # one should use it to remove users
 - name: adding user accounts (and register new_users facts)
@@ -83,7 +80,7 @@
     # configured first wiht something like
     # 127.0.1.1       <hostname>.<domain> <hostname>
     # for ansible_domain to return the domain.
-    ssh_key_file: "{{item.name}}.{{ansible_domain}}"
+    ssh_key_file: ".ssh/{{item.name}}.{{ansible_domain}}"
     # keys are only generated on specified host groups
     generate_ssh_key: "{{users_generate_ssh_keys}}"
   with_items: "{{users}}"
@@ -227,34 +224,15 @@
 - include: ssh_key_debug.yml
   when: groupadd_debug and users_generate_ssh_keys is defined and unmanaged_ssh_keys is defined
 
-# generate, fetch and deploy ssh keys
 - block:
 
-    # Prior to executing this task, we have moved existing keypairs to avoid
-    # ssh-keygent runtime error while attempting to overwrite a keyfile. Be
-    # careful moving this task around. We can safely do an union because we
-    # registered expired key *after* deletion of unmanaged keypairs. We are now
-    # sure to not recreate an expired keys that became also unmanaged.
-    # However if examining lists content on check run '-C' will be slightly
-    # wrong.
-
-    # ssh-keygen reminder:
-    #    -N new_passphrase
-    #    -q quiet
-    #    -f filename
-
-      # fixme: warning when undefined new_ssh_keys
-    - name: generate new ssh keys
-      command: ssh-keygen -q -N 'changeme' -f ~/.ssh/{{item.0.user}}.{{item.1}}
-      become_user: "{{item.0.user}}"
-      with_subelements:
-        - "{{new_ssh_keys}}"
-        - ssh_domains
+      # generate ssh keys
+    - include: fetch_ssh_keys.yml
 
       # fetch missing pub keys again prior to propagation
     - include: fetch_ssh_keys.yml
 
-  when: users_generate_ssh_keys
+  when: users_generate_ssh_keys is defined and users_generate_ssh_keys
 
 - include: deploy_ssh_keys.yml
   when: inventory_hostname != 'localhost'
@@ -292,20 +270,10 @@
 ##################################################
 
 # As each user might have to install his previously generated ssh public key to
-# the public git remote server before cloning the repo over ssh no route is
-# faster than the manual one.
+# the public git remote server before cloning or use https...
 
-# This could be automated though for private servers != (bitbucket or github)
-# using the git module,.
-# todo: install dotfiles from private repository//mirror using the git module.
-
-# Alternatively, if target has no www access or for whatever other reasons,
-# you can than at least useful sync stuff from a dir on the control machine.
-
-- name: install rsync
-  package: name=rsync state=latest
-
-- name: pull dotfiles repo
+# using git module
+- name: pull dotfiles repo with git module
   git:
     accept_hostkey: yes
     clone: yes
@@ -313,46 +281,35 @@
     repo: "{{item.dotfiles_repo}}"
     dest: "{{item.home|default(users_defaults.home)}}/{{item.name}}/dotfiles"
   with_items: "{{users|selectattr('dotfiles_repo','defined')|list}}"
-  when: ansible_host != "localhost"
 
-- name: sync dotfiles to target host user account
-  synchronize:
-    delete: yes
-    src: "{{item.home|default(users_defaults.home)}}/{{item.name}}/{{item.dotfiles_dir}}"
-    dest: "{{item.home|default(users_defaults.home)}}/{{item.name}}/"
-  remote_user: "{{item.name}}"
-  become: no
-  with_items: "{{users|selectattr('dotfiles_dir','defined')|list}}"
-  when: ansible_host != "localhost"
+# Alternatively, if target has no www access or for whatever other reasons,
+# you can than at least useful sync stuff from a dir on the control machine.
+- include: dotfiles_rsync.yml
+  when: ansible_host != "localhost" and (ansible_connection is undefined or ansible_connection == "ssh")
 
-- name: sync oh-my-zsh to target host user account
-  synchronize:
-    delete: yes
-    src: "{{item.home|default(users_defaults.home)}}/{{item.name}}/{{item.omyzsh_dir}}"
-    dest: "{{item.home|default(users_defaults.home)}}/{{item.name}}/"
-    # do not preserve group as gid can be different
-    group: no
-  remote_user: "{{item.name}}"
-  become: no
-  with_items: "{{users|selectattr('omyzsh_dir','defined')|list}}"
-  when: ansible_host != "localhost"
+- include: dotfiles_copy.yml
+  when: ansible_host != "localhost" and (ansible_connection is defined and ansible_connection != "ssh" and ansible_connection != "lxd")
 
-- name: sync .vim directory to target host user account
-  synchronize:
-    delete: yes
-    src: "{{item.home|default(users_defaults.home)}}/{{item.name}}/{{item.vim_dir}}"
-    dest: "{{item.home|default(users_defaults.home)}}/{{item.name}}/"
-  remote_user: "{{item.name}}"
-  become: no
-  with_items: "{{users|selectattr('vim_dir','defined')|list}}"
-  when: ansible_host != "localhost"
+# using lxc file push
+- include: dotfiles_copy_lxc.yml
+  when: ansible_connection is defined and ansible_connection == "lxd"
 
+# fixme: trigg on better conditional, this doesn't work with 'dotfiles_repo'
 - name: symlink user's dotfiles using Makefile
   make:
     chdir: "{{item.home|default(users_defaults.home)}}/{{item.name}}/dotfiles"
     target: install
   become_user: "{{item.name}}"
   with_items: "{{users|selectattr('dotfiles_dir','defined')|list}}"
+  when: ansible_connection != "lxd"
+
+# # fixme: trigg on better conditional, this doesn't work with 'dotfiles_repo'
+# - name: symlink user's dotfiles using Makefile
+#   shell: export USER={{item.name}} make -C {{item.home|default(users_defaults.home)}}/{{item.name}}/dotfiles install
+#   environment:
+#     USER: "{{item.name}}"
+#   with_items: "{{users|selectattr('dotfiles_dir','defined')|list}}"
+#   when: ansible_connection == "lxd"
 
 ##################################################
 # users deletion

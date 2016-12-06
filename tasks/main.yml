@@ -3,6 +3,23 @@
 - name: gather ansible_usergroups facts
   usergroups:
 
+#  When repos' fqdn are returning AAAA records and there are no IPV6
+#  connectivity, pycurl doesn't fallback on ipv4. Not tested when IPV6INIT=no.
+- name: force yum on RedHat <7 and derivatives to use ipv4
+  lineinfile:
+    line: "ip_resolve=4"
+    insertafter: "^gpgcheck*"
+    dest: /etc/yum.conf
+    state: present
+  when: ansible_distribution_major_version|int < 7
+
+- name: install sudo, rsync and zsh packages (required for this role)
+  package: name={{item}} state=latest
+  with_items:
+      - zsh
+      - sudo
+      - rsync
+
   # add unix group for usergroup
   # manage users for each usersgroups
 - include: groupadd.yml
@@ -18,7 +35,6 @@
 
 - block:
 
-  # removing unix groups when defined
   - include: groupdel.yml
     with_dict: "{{ansible_usergroups}}"
     when: usergroup.key not in users_exclusive_usergroups_exceptions and usergroup.key not in usergroups|map(attribute='name')|list
