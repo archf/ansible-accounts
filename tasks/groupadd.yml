@@ -62,7 +62,7 @@
     # useradd
     group: "{{usergroup.name}}"
 
-    password: "{{item.password|default('*')}}"
+    password: "{{item.password|password_hash('sha512')}}"
     update_password: "{{item.update_password|default(users_defaults.update_password)}}"
 
     createhome: "{{item.createhome|default(users_defaults.createhome)}}"
@@ -285,10 +285,15 @@
 # Alternatively, if target has no www access or for whatever other reasons,
 # you can than at least useful sync stuff from a dir on the control machine.
 - include: dotfiles_rsync.yml
-  when: ansible_host != "localhost" and (ansible_connection is undefined or ansible_connection == "ssh")
+  when: >
+    ansible_host != "localhost" and (ansible_connection is undefined or
+    ansible_connection == "ssh" or ansible_connection == "smart")
 
 - include: dotfiles_copy.yml
-  when: ansible_host != "localhost" and (ansible_connection is defined and ansible_connection != "ssh" and ansible_connection != "lxd")
+  when: >
+    ansible_host != "localhost" and (ansible_connection is defined
+    and ansible_connection != "ssh" and ansible_connection != "smart"
+    and ansible_connection != "lxd")
 
 # using lxc file push
 - include: dotfiles_copy_lxc.yml

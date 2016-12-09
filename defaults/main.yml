@@ -60,7 +60,7 @@ users_defaults:
   append: yes         # Append to group
 
   # Default to 'on_create' (will change passwd if they differ)
-  update_password: on_create
+  update_password: 'on_create'
   # update_password: always
 
   # This 'home' variable is the path prefix to the directory that will contain

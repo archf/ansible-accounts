@@ -1,32 +1,32 @@
 ---
 
-- name: sync dotfiles to target host user account
+- name: rsync dotfiles to target host user account
   synchronize:
     delete: yes
     src: "{{item.home|default(users_defaults.home)}}/{{item.name}}/{{item.dotfiles_dir}}"
     dest: "{{item.home|default(users_defaults.home)}}/{{item.name}}/"
-  remote_user: "{{item.name}}"
-  become: no
+  become_user: "{{item.name}}"
+  # become: no
   with_items: "{{users|selectattr('dotfiles_dir','defined')|list}}"
 
 # in case there are no www access, otherwise can be installed with a Makefile
 # rule in user's dotfiles.
-- name: sync oh-my-zsh to target host user account
+- name: rsync oh-my-zsh to target host user account
   synchronize:
     delete: yes
     src: "{{item.home|default(users_defaults.home)}}/{{item.name}}/{{item.omyzsh_dir}}"
     dest: "{{item.home|default(users_defaults.home)}}/{{item.name}}/"
     # do not preserve group as gid can be different
     group: no
-  remote_user: "{{item.name}}"
-  become: no
+  become_user: "{{item.name}}"
+  # become: no
   with_items: "{{users|selectattr('omyzsh_dir','defined')|list}}"
 
-- name: sync .vim directory to target host user account
+- name: rsync .vim directory to target host user account
   synchronize:
     delete: yes
     src: "{{item.home|default(users_defaults.home)}}/{{item.name}}/{{item.vim_dir}}"
     dest: "{{item.home|default(users_defaults.home)}}/{{item.name}}/"
-  remote_user: "{{item.name}}"
-  become: no
+  become_user: "{{item.name}}"
+  # become: no
   with_items: "{{users|selectattr('vim_dir','defined')|list}}"
