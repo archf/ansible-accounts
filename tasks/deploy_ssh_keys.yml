@@ -4,7 +4,7 @@
   authorized_key:
     user: "{{item.name}}"
     key: "{{lookup('file', groups_dir ~ '/' ~ usergroup.name ~ '/keys/' ~ item.name ~ '.' ~ users_default_domain ~ '.pub')}}"
-    exclusive: yes
+    exclusive: "{{users_exclusive_ssh_keys}}"
   with_items:
     - "{{users|default(omit)}}"
   when: users_default_domain is defined and users_default_domain == ansible_domain
@@ -13,7 +13,7 @@
   authorized_key:
     user: "{{item.0.name}}"
     key: "'{{lookup('file', groups_dir ~ '/' ~ usergroup.name ~ '/keys/' + ~ item.name ~ '.' ~ item.1 ~ '.pub')}}'"
-    exclusive: yes
+    exclusive: "{{users_exclusive_ssh_keys}}"
   with_subelements:
     - "{{users|selectattr('ssh_domains','defined')|list|default(omit)}}"
     - ssh_domains

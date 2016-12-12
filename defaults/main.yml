@@ -12,12 +12,15 @@ groupdel_debug: no
 users_usergroups: []
 
 # Don't generate private ssh key in user accounts on every machine, consider
-# agent forwarding instead.
-# Use this in group_vars to toggle ssh_key creation in a group of hosts.
+# agent forwarding instead. Use this in group_vars to toggle ssh_key creation
+# in a group of hosts.
 users_generate_ssh_keys: no
 
 # SSH key rotation is disabled by default.
 users_rotate_ssh_keys: no
+
+# Exclusive ssh keys on remote accounts.
+users_exclusive_ssh_keys: no
 
 # Max age of keys for ssh_rotation. This is a time specification that must be
 # compatbile with the find module.
