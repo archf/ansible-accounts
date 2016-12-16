@@ -6,20 +6,12 @@
   delegate_to: localhost
   with_items: "{{users|selectattr('dotfiles_dir','defined')|list}}"
 
-# in case there are no www access, otherwise can be installed with a Makefile
-# rule in user's dotfiles.
-- name: copy oh-my-zsh to target host user account
-  command: lxc file push --recursive --create-dirs {{item.home|default(users_defaults.home)}}/{{item.name}}/{{item.omyzsh_dir}} {{ansible_hostname}}{{item.home|default(users_defaults.home)}}/{{item.name}}
+- name: copy vimdir to target host user account
+  command: lxc file push --recursive --create-dirs {{item.home|default(users_defaults.home)}}/{{item.name}}/{{item.vim_dir}} {{ansible_hostname}}{{item.home|default(users_defaults.home)}}/{{item.name}}
   delegate_to: localhost
-  with_items: "{{users|selectattr('omyzsh_dir','defined')|list}}"
+  with_items: "{{users|selectattr('vim_dir','defined')|list}}"
 
-# fixme: this fails, but anyway it'll be synced on a ssh run
-
-# - name: copy 'vimdir' directory to target host user account
-#   command: lxc file push --recursive --create-dirs {{item.home|default(users_defaults.home)}}/{{item.name}}/{{item.vim_dir}} {{ansible_hostname}}{{item.home|default(users_defaults.home)}}/{{item.name}}
-#   command: localhost
-#   with_items: "{{users|selectattr('vim_dir','defined')|list}}"
-
+# you can only connect as root with lxd connection
 - name: adjust perms
   file:
     path: "{{item.home|default(users_defaults.home)}}"

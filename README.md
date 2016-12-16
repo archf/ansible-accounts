@@ -1,4 +1,4 @@
-# ansible-accounts
+# ansible-.
 
 A role to create and configure user accounts and groups on a host.
 
@@ -7,6 +7,12 @@ A role to create and configure user accounts and groups on a host.
 ### Ansible version
 
 Minimum required ansible version is 2.1.
+
+### Other considerations
+
+This roles contains tasks relying on the `synchronize` module (rsync) and
+therefore it requires the `openssh` daemon to be running.
+
 
 ## Description
 
@@ -65,11 +71,13 @@ such, this is the role behavior regarding your keyring management.
 To add users, you need to configure usergroups inside `group_vars` or `host_vars`.
 
 ```yaml
-  usergroups:
-    - name: vendorgroup
-      gid: 1001
-      # gid is optional
-    - name: customergroup
+usergroups:
+  - name: vendorgroup
+    # gid is optional
+    gid: 1001
+    # nopasswd is optional
+    nopasswd: ALL
+  - name: customergroup
 ```
 
 You can also tweak the behavior on a per group or per machine basis. See
@@ -114,7 +122,6 @@ users:
       - company.domain
 
     dotfiles_dir: dotfiles
-    omyzsh_dir: .oh-my-zsh
     vim_dir: .vim
 
     dotfiles_symlinks:
@@ -200,7 +207,7 @@ Defaults from `defaults/main.yml`.
 ```yaml
 # An external directory containing sensitive data (group profiles, public ssh
 # keys, users's ssh_config, ...etc.
-groups_dir: "{{ playbook_dir }}/private/groups"
+groups_dir: "{{playbook_dir}}/private/groups"
 
 # Include debugging tasks that prints variable information when adding and
 # removing unix groups.
@@ -210,12 +217,15 @@ groupdel_debug: no
 users_usergroups: []
 
 # Don't generate private ssh key in user accounts on every machine, consider
-# agent forwarding instead.
-# Use this in group_vars to toggle ssh_key creation in a group of hosts.
+# agent forwarding instead. Use this in group_vars to toggle ssh_key creation
+# in a group of hosts.
 users_generate_ssh_keys: no
 
 # SSH key rotation is disabled by default.
 users_rotate_ssh_keys: no
+
+# Exclusive ssh keys on remote accounts.
+users_exclusive_ssh_keys: no
 
 # Max age of keys for ssh_rotation. This is a time specification that must be
 # compatbile with the find module.
@@ -258,7 +268,7 @@ users_defaults:
   append: yes         # Append to group
 
   # Default to 'on_create' (will change passwd if they differ)
-  update_password: on_create
+  update_password: 'on_create'
   # update_password: always
 
   # This 'home' variable is the path prefix to the directory that will contain
@@ -311,7 +321,7 @@ users_defaults:
 ### Install with Ansible Galaxy
 
 ```shell
-ansible-galaxy install archf.accounts
+ansible-galaxy install archf..
 ```
 
 Basic usage is:
@@ -319,7 +329,7 @@ Basic usage is:
 ```yaml
 - hosts: all
   roles:
-    - role: archf.accounts
+    - role: archf..
 ```
 
 ### Install with git
@@ -327,13 +337,13 @@ Basic usage is:
 If you do not want a global installation, clone it into your `roles_path`.
 
 ```shell
-git clone git@github.com:archf/ansible-accounts.git /path/to/roles_path
+git clone git@github.com:archf/ansible-..git /path/to/roles_path
 ```
 
 But I often add it as a submdule in a given `playbook_dir` repository.
 
 ```shell
-git submodule add git@github.com:archf/ansible-accounts.git <playbook_dir>/roles/accounts
+git submodule add git@github.com:archf/ansible-..git <playbook_dir>/roles/.
 ```
 
 As the role is not managed by Ansible Galaxy, you do not have to specify the
@@ -344,7 +354,7 @@ Basic usage is:
 ```yaml
 - hosts: all
   roles:
-  - role: accounts
+  - role: .
 ```
 
 ## Ansible role dependencies

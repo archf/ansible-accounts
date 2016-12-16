@@ -112,7 +112,6 @@ description: |
         - company.domain
 
       dotfiles_dir: dotfiles
-      omyzsh_dir: .oh-my-zsh
       vim_dir: .vim
 
       dotfiles_symlinks:

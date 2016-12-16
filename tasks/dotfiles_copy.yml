@@ -9,16 +9,6 @@
     group: "{{usergroup.name}}"
   with_items: "{{users|selectattr('dotfiles_dir','defined')|list}}"
 
-# in case there are no www access, otherwise can be installed with a Makefile
-# rule in user's dotfiles.
-- name: copy oh-my-zsh to target host user account
-  copy:
-    src: "{{item.home|default(users_defaults.home)}}/{{item.name}}/{{item.omyzsh_dir}}"
-    dest: "{{item.home|default(users_defaults.home)}}/{{item.name}}/"
-    owner: "{{item.name}}"
-    group: "{{usergroup.name}}"
-  with_items: "{{users|selectattr('omyzsh_dir','defined')|list}}"
-
 - name: copy .vim directory to target host user account
   copy:
     src: "{{item.home|default(users_defaults.home)}}/{{item.name}}/{{item.vim_dir}}"

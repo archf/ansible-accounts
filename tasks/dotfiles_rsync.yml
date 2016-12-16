@@ -9,19 +9,6 @@
   # become: no
   with_items: "{{users|selectattr('dotfiles_dir','defined')|list}}"
 
-# in case there are no www access, otherwise can be installed with a Makefile
-# rule in user's dotfiles.
-- name: rsync oh-my-zsh to target host user account
-  synchronize:
-    delete: yes
-    src: "{{item.home|default(users_defaults.home)}}/{{item.name}}/{{item.omyzsh_dir}}"
-    dest: "{{item.home|default(users_defaults.home)}}/{{item.name}}/"
-    # do not preserve group as gid can be different
-    group: no
-  become_user: "{{item.name}}"
-  # become: no
-  with_items: "{{users|selectattr('omyzsh_dir','defined')|list}}"
-
 - name: rsync .vim directory to target host user account
   synchronize:
     delete: yes
