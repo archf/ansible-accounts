@@ -7,7 +7,7 @@
     dest: "{{item.home|default(users_defaults.home)}}/{{item.name}}/"
     owner: "{{item.name}}"
     group: "{{usergroup.name}}"
-  with_items: "{{users|selectattr('dotfiles_dir','defined')|list}}"
+  with_items: "{{users|default(omit)|selectattr('dotfiles_dir','defined')|list}}"
 
 - name: copy .vim directory to target host user account
   copy:
@@ -15,4 +15,4 @@
     dest: "{{item.home|default(users_defaults.home)}}/{{item.name}}/"
     owner: "{{item.name}}"
     group: "{{usergroup.name}}"
-  with_items: "{{users|selectattr('vim_dir','defined')|list}}"
+  with_items: "{{users|default(omit)|selectattr('vim_dir','defined')|list}}"

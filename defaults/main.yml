@@ -11,6 +11,11 @@ groupdel_debug: no
 
 users_usergroups: []
 
+# If you have no admin rights on the remote machine and you only want to deploy
+# your dotfiles and/or your ssh keys, turn on this option. It will only touch
+# your account (i.e: deploy your ssh keys and sync your dotfiles)
+users_noadmin: no
+
 # Don't generate private ssh key in user accounts on every machine, consider
 # agent forwarding instead. Use this in group_vars to toggle ssh_key creation
 # in a group of hosts.
@@ -19,7 +24,8 @@ users_generate_ssh_keys: no
 # SSH key rotation is disabled by default.
 users_rotate_ssh_keys: no
 
-# Exclusive ssh keys on remote accounts.
+# Exclusive ssh keys on remote accounts. This is fed to the authorized_key
+# module.
 users_exclusive_ssh_keys: no
 
 # Max age of keys for ssh_rotation. This is a time specification that must be
@@ -104,6 +110,13 @@ users_defaults:
     ControlMaster: auto
     ControlPath: '~/.ssh/controlmasters/%r@%h:%p'
 
-  # This is the list of files to symlinks to your dotfiles repo. While empty,
-  # you can change if you know users share a common set of dotfiles.
-  dotfiles_symlinks: []
+  # This is the list of files in your dotfiles_dir you do not want to rsync
+  # to the remote host.
+  dotfiles_rsync_exclude:
+    - americano
+    - i3
+    - zsh-autosuggestion
+
+    # directories for building zsh and vim from source
+    - tmux/tmux-?.?
+    - vim.d/vim

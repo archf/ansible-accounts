@@ -1,0 +1,27 @@
+---
+
+# template users' ssh_config
+
+# http://docs.ansible.com/ansible/include_vars_module.html
+# can't assign to name before version 2.2
+# however every file content are available inside
+# sourced_ssh_configs.results[i].ansible_facts.ssh_config
+- name: source each user ssh config
+  include_vars: "{{groups_dir}}/{{usergroup.name}}/{{item.name}}_ssh_config.yml"
+  # ignore missing
+  ignore_errors: yes
+  with_items: "{{users|default(omit)}}"
+  check_mode: yes
+  register: sourced_ssh_configs
+
+  # no yaml syntax validation here
+- name: template a ~/.ssh/config in each user account
+  template:
+    src: ssh.config.j2
+    dest: "{{item.item.home|default(users_defaults.home)}}/{{item.item.name}}/.ssh/config"
+    owner: "{{item.item.name}}"
+    group: "{{usergroup.name}}"
+    mode: 0600
+    backup: yes
+  with_items: "{{sourced_ssh_configs.results|default(omit)}}"
+  when:  sourced_ssh_configs['results'] is defined and item|succeeded

@@ -1,42 +1,78 @@
 ---
 
-- name: gather ansible_usergroups facts
-  usergroups:
+  # # Default predefined users variable. this avoids
+
+  #######################################
+  # no admin mode
+  #######################################
+- block:
+
+  # configure your user
+  - set_fact:
+      users:
+        - name: "{{ansible_user}}"
+          dotfiles_dir: "dotfiles"
+
+  - include: deploy_ssh_keys.yml
+    when: ansible_connection != 'local'
+
+  # Note: no <user>_ssh_config to source when running in users_noadmin mode
+  - include: ssh_config.yml
+
+  - include: dotfiles.yml
+    when: users_noadmin and ansible_connection != 'local'
+
+  when: users_noadmin
+
+  #########################################
+  # adding users by groups (default mode)
+  #########################################
+- block:
+
+  - name: gather ansible_usergroups facts
+    usergroups:
 
 #  When repos' fqdn are returning AAAA records and there are no IPV6
 #  connectivity, pycurl doesn't fallback on ipv4. Not tested when IPV6INIT=no.
-- name: force yum on RedHat <7 and derivatives to use ipv4
-  lineinfile:
-    line: "ip_resolve=4"
-    insertafter: "^gpgcheck*"
-    dest: /etc/yum.conf
-    state: present
-  when: ansible_distribution_major_version|int < 7
+  - name: force yum on RedHat <7 and derivatives to use ipv4
+    lineinfile:
+      line: "ip_resolve=4"
+      insertafter: "^gpgcheck*"
+      dest: /etc/yum.conf
+      state: present
+    become: yes
+    when: ansible_distribution_major_version|int < 7
 
-- name: install sudo, rsync and zsh packages (required for this role)
-  package: name={{item}} state=latest
-  with_items:
-      - zsh
-      - sudo
-      - rsync
+  - name: install sudo, rsync and zsh packages (required for this role)
+    package: name={{item}} state=latest
+    become: yes
+    with_items:
+        - zsh
+        - sudo
+        - rsync
 
-  # add unix group for usergroup
-  # manage users for each usersgroups
-- include: groupadd.yml
-  with_items: "{{usergroups|default(omit)}}"
-  loop_control:
-    loop_var: usergroup
+    # add unix group for usergroup
+    # manage users for each usersgroups
+  - include: groupadd.yml
+    with_items: "{{usergroups|default(omit)}}"
+    loop_control:
+      loop_var: usergroup
 
-- debug: msg="Unix group '{{usergroup.key}}' will be removed"
-  with_dict: "{{ansible_usergroups}}"
-  when: usergroups is defined and groupdel_debug and usergroup.key not in users_exclusive_usergroups_exceptions and usergroup.key not in usergroups|map(attribute='name')|list
-  loop_control:
-    loop_var: usergroup
+  - debug: msg="Unix group '{{usergroup.key}}' will be removed"
+    with_dict: "{{ansible_usergroups|default({})}}"
+    when: usergroups is defined and groupdel_debug and usergroup.key not in users_exclusive_usergroups_exceptions and usergroup.key not in usergroups|map(attribute='name')|list
+    loop_control:
+      loop_var: usergroup
 
+  when: not users_noadmin
+
+  ###############################################################
+  # removing users by groups (when users_exclusive_groupmembers)
+  ###############################################################
 - block:
 
   - include: groupdel.yml
-    with_dict: "{{ansible_usergroups}}"
+    with_dict: "{{ansible_usergroups|default({})}}"
     when: usergroup.key not in users_exclusive_usergroups_exceptions and usergroup.key not in usergroups|map(attribute='name')|list
     loop_control:
       loop_var: usergroup
@@ -54,7 +90,7 @@
       group:
         name: "{{usergroup.key}}"
         state: absent
-      with_dict: "{{ansible_usergroups}}"
+      with_dict: "{{ansible_usergroups|default({})}}"
       when: item.key not in users_exclusive_usergroups_exceptions
 
-  when: users_exclusive_usergroups
+  when: not users_noadmin and users_exclusive_usergroups

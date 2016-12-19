@@ -1,4 +1,4 @@
-# ansible-.
+# ansible-accounts
 
 A role to create and configure user accounts and groups on a host.
 
@@ -13,6 +13,9 @@ Minimum required ansible version is 2.1.
 This roles contains tasks relying on the `synchronize` module (rsync) and
 therefore it requires the `openssh` daemon to be running.
 
+However, if no underlying connection is not `ssh`, it will fall back to the
+copy module.
+
 
 ## Description
 
@@ -23,6 +26,10 @@ This role works in a usergroups paradigm. As your coworkers also needs to
 login on the same servers, user accounts are configured by adding one or
 multiple usergroups composed of one or more individual users that will end up
 attached to the unix group named after the usergroup name. Phew!
+
+There is also 'noadmin' mode for when you have no control over the remote
+machine. You can use this on the restricted machines to deploy your public
+ssh keys and your dotfiles.
 
 ### Workstations
 
@@ -193,6 +200,11 @@ As you might notice,
 * `Match` statements are supported.
 * Quote strings with special chars else yaml parsing will fail
 
+**Using the 'noadmin' mode**
+
+For this restricted mode, just set the `users_noadmin' boolean to yes|True
+either on the cli (`-e users_noadmin=True`) or in your playbook variables.
+
 
 ## Role Variables
 
@@ -216,6 +228,11 @@ groupdel_debug: no
 
 users_usergroups: []
 
+# If you have no admin rights on the remote machine and you only want to deploy
+# your dotfiles and/or your ssh keys, turn on this option. It will only touch
+# your account (i.e: deploy your ssh keys and sync your dotfiles)
+users_noadmin: no
+
 # Don't generate private ssh key in user accounts on every machine, consider
 # agent forwarding instead. Use this in group_vars to toggle ssh_key creation
 # in a group of hosts.
@@ -224,7 +241,8 @@ users_generate_ssh_keys: no
 # SSH key rotation is disabled by default.
 users_rotate_ssh_keys: no
 
-# Exclusive ssh keys on remote accounts.
+# Exclusive ssh keys on remote accounts. This is fed to the authorized_key
+# module.
 users_exclusive_ssh_keys: no
 
 # Max age of keys for ssh_rotation. This is a time specification that must be
@@ -309,9 +327,15 @@ users_defaults:
     ControlMaster: auto
     ControlPath: '~/.ssh/controlmasters/%r@%h:%p'
 
-  # This is the list of files to symlinks to your dotfiles repo. While empty,
-  # you can change if you know users share a common set of dotfiles.
-  dotfiles_symlinks: []
+  # This is the list of files in your dotfiles_dir you do not want to rsync
+  # to the remote host.
+  dotfiles_rsync_exclude:
+    - americano
+    - i3
+    - zsh-autosuggestion
+    # directories for building zsh and vim from source
+    - tmux/tmux-?.?
+    - vim.d/vim
 
 ```
 
@@ -321,7 +345,7 @@ users_defaults:
 ### Install with Ansible Galaxy
 
 ```shell
-ansible-galaxy install archf..
+ansible-galaxy install archf.accounts
 ```
 
 Basic usage is:
@@ -329,7 +353,7 @@ Basic usage is:
 ```yaml
 - hosts: all
   roles:
-    - role: archf..
+    - role: archf.accounts
 ```
 
 ### Install with git
@@ -337,13 +361,13 @@ Basic usage is:
 If you do not want a global installation, clone it into your `roles_path`.
 
 ```shell
-git clone git@github.com:archf/ansible-..git /path/to/roles_path
+git clone git@github.com:archf/ansible-accounts.git /path/to/roles_path
 ```
 
 But I often add it as a submdule in a given `playbook_dir` repository.
 
 ```shell
-git submodule add git@github.com:archf/ansible-..git <playbook_dir>/roles/.
+git submodule add git@github.com:archf/ansible-accounts.git <playbook_dir>/roles/accounts
 ```
 
 As the role is not managed by Ansible Galaxy, you do not have to specify the
@@ -354,7 +378,7 @@ Basic usage is:
 ```yaml
 - hosts: all
   roles:
-  - role: .
+  - role: accounts
 ```
 
 ## Ansible role dependencies
@@ -363,7 +387,6 @@ None.
 
 ## Todo
 
-  * manage sudoers
   * generate random passwords using passlib and mail'em to user
 
 ## License

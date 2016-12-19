@@ -5,9 +5,11 @@
     delete: yes
     src: "{{item.home|default(users_defaults.home)}}/{{item.name}}/{{item.dotfiles_dir}}"
     dest: "{{item.home|default(users_defaults.home)}}/{{item.name}}/"
+    rsync_opts:
+      - "--exclude={{'{' ~ users_dotfiles_rsync_exclude|default(users_defaults['dotfiles_rsync_exclude'])|join(',') ~ '}'}}"
+      - "--delete-excluded"
   become_user: "{{item.name}}"
-  # become: no
-  with_items: "{{users|selectattr('dotfiles_dir','defined')|list}}"
+  with_items: "{{users|default(omit)|selectattr('dotfiles_dir','defined')|list}}"
 
 - name: rsync .vim directory to target host user account
   synchronize:
@@ -15,5 +17,4 @@
     src: "{{item.home|default(users_defaults.home)}}/{{item.name}}/{{item.vim_dir}}"
     dest: "{{item.home|default(users_defaults.home)}}/{{item.name}}/"
   become_user: "{{item.name}}"
-  # become: no
-  with_items: "{{users|selectattr('vim_dir','defined')|list}}"
+  with_items: "{{users|default(omit)|selectattr('vim_dir','defined')|list}}"

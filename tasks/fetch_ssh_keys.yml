@@ -5,7 +5,7 @@
 - name: fetch {{ansible_domain}} public ssh keys back to control machine
   fetch:
     src: "{{item.home|default(users_defaults.home)}}/{{item.name}}/.ssh/{{item.name}}.{{ansible_domain}}.pub"
-    dest: "{{groups_dir}}/{{usergroupname}}/keys/"
+    dest: "{{groups_dir}}/{{usergroup.name}}/keys/"
     flat: yes
   with_items:
     - "{{users}}"
@@ -13,7 +13,7 @@
 - name: fetch extra 'ssh_domains' public ssh keys back to control machine
   fetch:
     src: "{{item.0.home|default(users_defaults.home)}}/{{item.0.name}}/.ssh/{{item.0.name}}.{{item.1}}.pub"
-    dest: "{{groups_dir}}/{{usergroupname}}/keys/"
+    dest: "{{groups_dir}}/{{usergroup.name}}/keys/"
     flat: yes
   # with_nested:
   #   - "{{users}}"

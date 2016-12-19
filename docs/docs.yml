@@ -5,6 +5,9 @@ requirements: |
   This roles contains tasks relying on the `synchronize` module (rsync) and
   therefore it requires the `openssh` daemon to be running.
 
+  However, if no underlying connection is not `ssh`, it will fall back to the
+  copy module.
+
 description: |
 
   ### Usergroups
@@ -13,6 +16,10 @@ description: |
   login on the same servers, user accounts are configured by adding one or
   multiple usergroups composed of one or more individual users that will end up
   attached to the unix group named after the usergroup name. Phew!
+
+  There is also 'noadmin' mode for when you have no control over the remote
+  machine. You can use this on the restricted machines to deploy your public
+  ssh keys and your dotfiles.
 
   ### Workstations
 
@@ -183,8 +190,12 @@ description: |
   * `Match` statements are supported.
   * Quote strings with special chars else yaml parsing will fail
 
+  **Using the 'noadmin' mode**
+
+  For this restricted mode, just set the `users_noadmin' boolean to yes|True
+  either on the cli (`-e users_noadmin=True`) or in your playbook variables.
+
 todos:
-  - manage sudoers
   - generate random passwords using passlib and mail'em to user
 
 role_stack: |
