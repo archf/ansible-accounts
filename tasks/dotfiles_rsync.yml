@@ -1,14 +1,21 @@
 ---
 
+# NOTES:
+# if playbook is an with "-u root":
+#   Doesn't work if become=yes
+#   Must use set_remote_user=no to avoid setting user@ to ansible_user
+
 - name: rsync dotfiles to target host user account
   synchronize:
     delete: yes
     src: "{{item.home|default(users_defaults.home)}}/{{item.name}}/{{item.dotfiles_dir}}"
     dest: "{{item.home|default(users_defaults.home)}}/{{item.name}}/"
     rsync_opts:
+      - "--rsh='ssh -l {{item.name}}'"
       - "--exclude={{'{' ~ users_dotfiles_rsync_exclude|default(users_defaults['dotfiles_rsync_exclude'])|join(',') ~ '}'}}"
       - "--delete-excluded"
-  become_user: "{{item.name}}"
+    set_remote_user: no
+  become: no
   with_items: "{{users|default(omit)|selectattr('dotfiles_dir','defined')|list}}"
 
 - name: rsync .vim directory to target host user account
@@ -16,5 +23,8 @@
     delete: yes
     src: "{{item.home|default(users_defaults.home)}}/{{item.name}}/{{item.vim_dir}}"
     dest: "{{item.home|default(users_defaults.home)}}/{{item.name}}/"
-  become_user: "{{item.name}}"
+    rsync_opts:
+      - "--rsh='ssh -l {{item.name}}'"
+    set_remote_user: no
+  become: no
   with_items: "{{users|default(omit)|selectattr('vim_dir','defined')|list}}"

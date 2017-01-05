@@ -82,13 +82,16 @@ usergroups:
   - name: vendorgroup
     # gid is optional
     gid: 1001
+
+    # create vendorgroup file inside /etc/sudoers.d
+    sudoers: yes
     # nopasswd is optional
     nopasswd: ALL
   - name: customergroup
 ```
 
 You can also tweak the behavior on a per group or per machine basis. See
-'Default vars'.
+variables in 'Default vars' .
 
 Then at the path defined by `groups_dir` variable (`{{ playbook_dir }}/private/groups`)
 create a folder by the `usergroup name` with content such as
@@ -333,6 +336,7 @@ users_defaults:
     - americano
     - i3
     - zsh-autosuggestion
+
     # directories for building zsh and vim from source
     - tmux/tmux-?.?
     - vim.d/vim

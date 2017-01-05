@@ -1,5 +1,7 @@
 ---
 
+# NOTE: you won't get here if users_noadmin=yes
+
 - name: adding unix usergroup
   group: name={{usergroup.name}} state=present gid={{usergroup.gid|default(omit)}}
 
