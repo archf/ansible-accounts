@@ -2,7 +2,7 @@
 galaxy_info:
   author: "Felix Archambault"
   description: A role to create and configure user accounts and groups on a host.
-  min_ansible_version: 2.1
+  min_ansible_version: 2.3
   license: BSD
 
   platforms:

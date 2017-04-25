@@ -27,8 +27,8 @@
   #########################################
   # adding users by groups (default mode)
   #########################################
-- block:
-
+- name: add users by unix group
+  block:
   - name: gather ansible_usergroups facts
     usergroups:
 

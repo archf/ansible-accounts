@@ -1,5 +1,13 @@
 ---
 
+- name: set '{{usergroup['name']}}' 'new_ssh_keys' lists w/o expired keys
+  set_fact:
+    new_ssh_keys: "{{managed_ssh_keys|difference(active_ssh_keys)|split_keynames}}"
+
+################################
+# generate new ssh keys
+################################
+
 # Prior to executing this task, we have moved existing keypairs to avoid
 # ssh-keygent runtime error while attempting to overwrite a keyfile. Be
 # careful moving this task around. We can safely do an union because we
@@ -20,3 +28,4 @@
   with_subelements:
     - "{{new_ssh_keys}}"
     - ssh_domains
+  register: generate_new_ssh_keys

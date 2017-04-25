@@ -1,0 +1,64 @@
+---
+
+################################
+# removal of unmanaged ssh keys
+################################
+
+# unmanaged_ssh_keys: flat list of keys no longer required
+- name: set '{{usergroup['name']}}' 'unmanaged' lists
+  set_fact:
+    # this reads as 'active_ssh_keys not in managed_ssh_keys'
+    unmanaged_ssh_keys: "{{active_ssh_keys|difference(managed_ssh_keys)}}"
+
+  # those are moved to old_keys dir just in case
+- name: backup '{{usergroup['name']}}' unmanaged public ssh keys on control machine
+  command: >
+    mv {{groups_dir}}/{{usergroup['name']}}/keys/{{item}}.pub
+      {{groups_dir}}/{{usergroup['name']}}/old_keys/
+  with_items: "{{unmanaged_ssh_keys|default(omit)}}"
+  delegate_to: localhost
+  # ignore missing
+  ignore_errors: true
+  run_once: true
+
+- name: backup '{{usergroup['name']}}' target's unmanaged keypairs to user's ~/.ssh/old_keys
+  command: mv ~/.ssh/{{item}} ~/.ssh/old_keys/
+  become_user: "{{item.split('.', 1)}}"
+  with_items: "{{unmanaged_ssh_keys|default(omit)}}"
+
+####################
+# ssh key rotation
+####################
+
+# result is returned in the 'files' list of dict
+- name: register raw list of {{usergroup['name']}} expired keys (older than {{ users_ssh_key_max_age }})
+  find:
+    age: "{{users_ssh_key_max_age}}"
+    paths: "{{groups_dir}}/{{usergroup['name']}}/keys"
+    patterns: '*.pub'
+  register: raw_expired_ssh_keys
+
+# expired_ssh_keys: list of keys that needs to be rotated
+- name: set {{usergroup['name']}} 'expired' ssh_key facts
+  set_fact:
+    expired_ssh_keys: "{{raw_expired_ssh_keys.files|map(attribute='path')|get_ssh_keylist}}"
+
+  # those are moved to old_keys dir just in case
+- name: move away {{usergroup['name']}} expired ssh keys on control machine
+  command: >
+    mv {{groups_dir}}/{usergroup['name']}}/keys/{{item}}.pub
+      {{groups_dir}}/{{usergroup['name']}}/old_keys/
+  with_items: "{{expired_ssh_keys|default(omit)}}"
+  delegate_to: localhost
+  # ignore missing
+  ignore_errors: true
+  run_once: true
+
+- name: move expired keypairs to user's ~/.ssh/old_keys
+  command: mv ~/.ssh/{{item}}* ~/.ssh/old_keys/
+  become_user: "{{item.split('.', 1)}}"
+  with_items: "{{expired_ssh_keys|default(omit)}}"
+
+- name: set {{usergroup['name']}} 'new_ssh_keys' lists /w expired keys
+  set_fact:
+    new_ssh_keys: "{{managed_ssh_keys|difference(active_ssh_keys)|union(expired_ssh_key)|split_keynames}}"

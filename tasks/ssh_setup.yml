@@ -1,85 +1,21 @@
 ---
 
-- name: register raw list of {{usergroup.name}} active ssh keys
+- name: register raw list of {{usergroup['name']}} active ssh keys
   find:
-    paths: "{{groups_dir}}/{{usergroup.name}}/keys"
+    paths: "{{groups_dir}}/{{usergroup['name']}}/keys"
     patterns: "*.pub"
   register: raw_active_ssh_keys
 
 # all those are flat lists to allow usage built-in theory filters
 # managed_ssh_keys: flat list of keys for all usergroup users as defined in
 #                   users.yml and considering 'users_default_domain'.
-# active_ssh_keys: flat list of keys already in place
-- name: set {{usergroup.name}} 'managed' and 'active' ssh key lists
+# active_ssh_keys: flat list of keys already in place (from list of pub keys on
+#                 control machine
+- name: set '{{usergroup['name']}}' 'managed' and 'active' ssh key lists
   set_fact:
     managed_ssh_keys: "{{users|get_managed_keys(users_default_domain)}}"
     active_ssh_keys: "{{raw_active_ssh_keys.files|map(attribute='path')|get_ssh_keylist}}"
 
-# unmanaged_ssh_keys: flat list of keys no longer required
-- name: set {{usergroup.name}} 'unmanaged' lists
-  set_fact:
-    # this reads for example 'active_ssh_keys not in managed_ssh_keys'
-    unmanaged_ssh_keys: "{{active_ssh_keys|difference(managed_ssh_keys)}}"
-
-  # those are moved to old_keys dir just in case
-- name: move away {{usergroup.name}} unmanaged public ssh keys on control machine
-  command: >
-    mv {{groups_dir}}/{{usergroup.name}}/keys/{{item}}.pub
-      {{groups_dir}}/{{usergroup.name}}/old_keys/
-  with_items: "{{unmanaged_ssh_keys|default(omit)}}"
-  delegate_to: localhost
-  # ignore missing
-  ignore_errors: true
-  run_once: true
-
-- name: set {{usergroup.name}} 'new_ssh_keys' lists w/o expired keys
-  set_fact:
-    new_ssh_keys: "{{managed_ssh_keys|difference(active_ssh_keys)|split_keynames}}"
-  when: not users_rotate_ssh_keys
-
-- name: move unmanaged keypairs to user's ~/.ssh/old_keys on target
-  command: mv ~/.ssh/{{item}} ~/.ssh/old_keys/
-  become_user: "{{item.split('.', 1)}}"
-  with_items: "{{unmanaged_ssh_keys|default(omit)}}"
-  when: users_generate_ssh_keys or users_rotate_ssh_keys
-
-# tasks when users_rotate_ssh_keys
-- block:
-    # result is returned in the 'files' list of dict
-    - name: register raw list of {{usergroup.name}} expired keys (older than {{ users_ssh_key_max_age }})
-      find:
-        age: "{{users_ssh_key_max_age}}"
-        paths: "{{groups_dir}}/{{usergroup.name}}/keys"
-        patterns: '*.pub'
-      register: raw_expired_ssh_keys
-
-    # expired_ssh_keys: list of keys that needs to be rotated
-    - name: set {{usergroup.name}} 'expired' ssh_key facts
-      set_fact:
-        expired_ssh_keys: "{{raw_expired_ssh_keys.files|map(attribute='path')|get_ssh_keylist}}"
-
-      # those are moved to old_keys dir just in case
-    - name: move away {{usergroup.name}} expired ssh keys on control machine
-      command: >
-        mv {{groups_dir}}/{usergroup.name}}/keys/{{item}}.pub
-          {{groups_dir}}/{{usergroup.name}}/old_keys/
-      with_items: "{{expired_ssh_keys|default(omit)}}"
-      delegate_to: localhost
-      # ignore missing
-      ignore_errors: true
-      run_once: true
-
-    - name: move expired keypairs to user's ~/.ssh/old_keys
-      command: mv ~/.ssh/{{item}}* ~/.ssh/old_keys/
-      become_user: "{{item.split('.', 1)}}"
-      with_items: "{{expired_ssh_keys|default(omit)}}"
-
-    - name: set {{usergroup.name}} 'new_ssh_keys' lists /w expired keys
-      set_fact:
-        new_ssh_keys: "{{managed_ssh_keys|difference(active_ssh_keys)|union(expired_ssh_key)|split_keynames}}"
-
-  when: (users_rotate_ssh_keys and users_generate_ssh_keys)
-
-# run ansible with "-e 'groupadd_debug=True'
+# # run ansible with "-e 'groupadd_debug=True'
 - include: ssh_key_debug.yml
   when: groupadd_debug and users_generate_ssh_keys is defined and unmanaged_ssh_keys is defined

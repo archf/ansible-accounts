@@ -1,7 +1,7 @@
 ---
 
 # NOTES:
-# if playbook is an with "-u root":
+# if playbook is ran with "-u root":
 #   Doesn't work if become=yes
 #   Must use set_remote_user=no to avoid setting user@ to ansible_user
 
@@ -9,11 +9,12 @@
   synchronize:
     delete: yes
     src: "{{item.home|default(users_defaults.home)}}/{{item.name}}/{{item.dotfiles_dir}}"
-    dest: "{{item.home|default(users_defaults.home)}}/{{item.name}}/"
+    dest: "{{item.home|default(users_defaults.home)}}/{{item.name}}"
     rsync_opts:
-      - "--rsh='ssh -l {{item.name}}'"
-      - "--exclude={{'{' ~ users_dotfiles_rsync_exclude|default(users_defaults['dotfiles_rsync_exclude'])|join(',') ~ '}'}}"
+      # - "--rsh='ssh -l {{item.name}}'"
+      - "--exclude={{'{' ~ users_dotfiles_rsync_exclude|default(users_defaults['dotfiles_rsync_exclude'])|join(',') ~ '}' | replace(',', item['dotfiles_dir'] ~ '/,')}}"
       - "--delete-excluded"
+    # put user@ for the remote path
     set_remote_user: no
   become: no
   with_items: "{{users|default(omit)|selectattr('dotfiles_dir','defined')|list}}"
@@ -22,9 +23,9 @@
   synchronize:
     delete: yes
     src: "{{item.home|default(users_defaults.home)}}/{{item.name}}/{{item.vim_dir}}"
-    dest: "{{item.home|default(users_defaults.home)}}/{{item.name}}/"
+    dest: "{{item.home|default(users_defaults.home)}}/{{item.name}}"
     rsync_opts:
-      - "--rsh='ssh -l {{item.name}}'"
+      # - "--rsh='ssh -l {{item.name}}'"
     set_remote_user: no
   become: no
   with_items: "{{users|default(omit)|selectattr('vim_dir','defined')|list}}"

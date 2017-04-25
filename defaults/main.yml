@@ -21,7 +21,8 @@ users_noadmin: no
 # in a group of hosts.
 users_generate_ssh_keys: no
 
-# SSH key rotation is disabled by default.
+# SSH key rotation is disabled by default. Enabling this implicitly enables
+# users_generate_ssh_keys.
 users_rotate_ssh_keys: no
 
 # Exclusive ssh keys on remote accounts. This is fed to the authorized_key
@@ -117,6 +118,6 @@ users_defaults:
     - i3
     - zsh-autosuggestion
 
-    # directories for building zsh and vim from source
+    # directories for building tmux and vim from source
     - tmux/tmux-?.?
     - vim.d/vim
