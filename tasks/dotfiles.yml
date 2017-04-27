@@ -1,0 +1,52 @@
+---
+
+# included from multiples places, therefore content must remain in this task
+# file
+#
+# As each user might have to install his previously generated ssh public key to
+# the public git remote server before cloning or use https...
+
+# using git module
+- name: pull dotfiles repo with git module
+  git:
+    accept_hostkey: yes
+    clone: yes
+    recursive: yes
+    repo: "{{item.dotfiles_repo}}"
+    dest: "{{item.home|default(users_defaults.home)}}/{{item.name}}/dotfiles"
+  with_items: "{{users|default(omit)|selectattr('dotfiles_repo','defined')|list}}"
+
+# Alternatively, if target has no www access or for whatever other reasons,
+# you can than at least useful sync stuff from a dir on the control machine.
+- include: dotfiles_rsync.yml
+  when: >
+    ansible_host != "localhost" and (ansible_connection is undefined or
+    ansible_connection == "ssh" or ansible_connection == "smart")
+
+- include: dotfiles_copy.yml
+  when:
+    - ansible_host != "localhost"
+    - ansible_connection is defined and ansible_connection != "ssh"
+    - ansible_connection is defined and ansible_connection != "smart"
+    - ansible_connection is defined and ansible_connection != "lxd"
+
+# using lxc file push
+- include: dotfiles_copy_lxc.yml
+  when: ansible_connection is defined and ansible_connection == "lxd"
+
+# fixme: trigg on better conditional, this doesn't work with 'dotfiles_repo'
+- name: symlink user's dotfiles using Makefile
+  make:
+    chdir: "{{item.home|default(users_defaults.home)}}/{{item.name}}/dotfiles"
+    target: install
+  become_user: "{{item.name}}"
+  with_items: "{{users|default(omit)|selectattr('dotfiles_dir','defined')|list}}"
+  when: ansible_connection != "lxd"
+
+# # fixme: trigg on better conditional, this doesn't work with 'dotfiles_repo'
+# - name: symlink user's dotfiles using Makefile
+#   shell: export USER={{item.name}} make -C {{item.home|default(users_defaults.home)}}/{{item.name}}/dotfiles install
+#   environment:
+#     USER: "{{item.name}}"
+#   with_items: "{{users|selectattr('dotfiles_dir','defined')|list}}"
+#   when: ansible_connection == "lxd"
