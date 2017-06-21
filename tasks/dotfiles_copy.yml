@@ -8,6 +8,8 @@
     owner: "{{item.name}}"
     group: "{{usergroup.name}}"
   with_items: "{{users|default(omit)|selectattr('dotfiles_dir','defined')|list}}"
+  when:
+    - users_usermap.get(item['name'], item['name']) in ansible_control_machine_users
 
 - name: copy .vim directory to target host user account
   copy:
@@ -16,3 +18,5 @@
     owner: "{{item.name}}"
     group: "{{usergroup.name}}"
   with_items: "{{users|default(omit)|selectattr('vim_dir','defined')|list}}"
+  when:
+    - users_usermap.get(item['name'], item['name']) in ansible_control_machine_users

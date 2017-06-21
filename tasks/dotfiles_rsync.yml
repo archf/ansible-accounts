@@ -1,31 +1,58 @@
 ---
 
 # NOTES:
-# if playbook is ran with "-u root":
-#   Doesn't work if become=yes
-#   Must use set_remote_user=no to avoid setting user@ to ansible_user
 
+# This doesn't work if:
+#   * become=yes and pipelining=True and requiretty=False
+#     - unless we make use of 'NOPASSWD' in the sudoers.
+#   * there is no local matching user on control machine for a remote account
+#     - nothing will happen in that case
+#     - considering filling the users_usermap dict (see doc)
+
+# workaround: only rsync for user invoking ansible
+
+# Explanations:
+
+# When enabling pipelining w/ requiretty disabled in sudoers and become=yes
+# rsync will complain:
+#     -> 'no tty present and no askpass program specified'
+#
+#   see: https://github.com/ansible/ansible/issues/15297
+#        https://github.com/ansible/ansible/pull/21531
+
+# The reason why we want a tty want using 'sudo' is described here:
+#   https://wiki.archlinux.org/index.php/sudo#SSH_TTY_Problems
+#     -> Without a tty, sudo cannot disable echo when prompting for a password.
+#
 - name: rsync dotfiles to target host user account
   synchronize:
     delete: yes
-    src: "{{item.home|default(users_defaults.home)}}/{{item.name}}/{{item.dotfiles_dir}}"
-    dest: "{{item.home|default(users_defaults.home)}}/{{item.name}}"
+    src: "{{item['home']|default(users_defaults['home'])}}/{{lookup('env','USER') if users_noadmin else users_usermap.get(item['name'], item['name'])}}/{{item['dotfiles_dir']}}"
+    dest: "{{item['home']|default(users_defaults['home'])}}/{{item['name']}}"
     rsync_opts:
-      # - "--rsh='ssh -l {{item.name}}'"
       - "--exclude={{'{' ~ users_dotfiles_rsync_exclude|default(users_defaults['dotfiles_rsync_exclude'])|join(',') ~ '}' | replace(',', item['dotfiles_dir'] ~ '/,')}}"
       - "--delete-excluded"
-    # put user@ for the remote path
-    set_remote_user: no
+
+  # put user@ for the remote path, define the remote user for a host that does
+  # not match the inventory
+  # set_remote_user: no
   become: no
   with_items: "{{users|default(omit)|selectattr('dotfiles_dir','defined')|list}}"
+  when:
+    - users_usermap.get(item['name'], item['name']) == lookup('env','USER')
+    - users_usermap.get(item['name'], item['name']) in ansible_control_machine_users
+  # environment:
+  #    ANSIBLE_SSH_PIPELINING: False
+  # when: (item['name'] in ansible_control_machine_users or users_noadmin)
+  # ANSIBLE_SSH_ARGS
 
 - name: rsync .vim directory to target host user account
   synchronize:
     delete: yes
-    src: "{{item.home|default(users_defaults.home)}}/{{item.name}}/{{item.vim_dir}}"
-    dest: "{{item.home|default(users_defaults.home)}}/{{item.name}}"
-    rsync_opts:
-      # - "--rsh='ssh -l {{item.name}}'"
-    set_remote_user: no
+    src: "{{item['home']|default(users_defaults['home'])}}/{{lookup('env','USER') if users_noadmin else users_usermap.get(item['name'], item['name'])}}/{{item['vim_dir']}}"
+    dest: "{{item['home']|default(users_defaults['home'])}}/{{item['name']}}"
   become: no
   with_items: "{{users|default(omit)|selectattr('vim_dir','defined')|list}}"
+  when:
+    - users_usermap.get(item['name'], item['name']) == lookup('env','USER')
+    - users_usermap.get(item['name'], item['name']) in ansible_control_machine_users

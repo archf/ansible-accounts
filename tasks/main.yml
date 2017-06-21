@@ -1,6 +1,8 @@
 ---
 
-  # # Default predefined users variable. this avoids
+- set_fact:
+    ansible_control_machine_users: "{{lookup('pipe', 'lslogins --noheadings --raw | awk ' + '{if ($1 >= 1000 && $1 < 65534) print $2}'|quote).split('\n')}}"
+    test: "{{lookup('pipe', 'env')}}"
 
   #######################################
   # no admin mode
@@ -41,7 +43,7 @@
       dest: /etc/yum.conf
       state: present
     become: yes
-    when: ansible_distribution_major_version|int < 7
+    when: ansible_distribution_major_version is defined and ansible_distribution_major_version|int < 7
 
   - name: install sudo, rsync and zsh packages (required for this role)
     package: name={{item}} state=latest
@@ -50,6 +52,7 @@
         - zsh
         - sudo
         - rsync
+    when: ansible_distribution_major_version is defined
 
     # add unix group for usergroup
     # manage users for each usersgroups
@@ -58,7 +61,7 @@
     loop_control:
       loop_var: usergroup
 
-  - debug: msg="Unix group '{{usergroup.key}}' will be removed"
+  - debug: msg="Unix group '{{usergroup['key']}}' will be removed"
     with_dict: "{{ansible_usergroups|default({})}}"
     when: usergroups is defined and groupdel_debug and usergroup.key not in users_exclusive_usergroups_exceptions and usergroup.key not in usergroups|map(attribute='name')|list
     loop_control:
@@ -86,9 +89,9 @@
          delete all unix groups. Press return to continue.
          Press Ctrl+c and then 'a' to abort"
 
-    - name: delete unix group '{{usergroup.key}}
+    - name: delete unix group '{{usergroup['key']}}
       group:
-        name: "{{usergroup.key}}"
+        name: "{{usergroup['key']}}"
         state: absent
       with_dict: "{{ansible_usergroups|default({})}}"
       when: item.key not in users_exclusive_usergroups_exceptions

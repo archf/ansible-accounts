@@ -6,7 +6,7 @@ A role to create and configure user accounts and groups on a host.
 
 ### Ansible version
 
-Minimum required ansible version is 2.1.
+Minimum required ansible version is 2.3.
 
 ### Other considerations
 
@@ -29,21 +29,7 @@ attached to the unix group named after the usergroup name. Phew!
 
 There is also 'noadmin' mode for when you have no control over the remote
 machine. You can use this on the restricted machines to deploy your public
-ssh keys and your dotfiles.
-
-### Workstations
-
-You will often see around the term `workstations` either in the code or in
-part of variable's name or as an ansible group name. Workstations can be seen
-as the main working machine. For instance a laptop or a desktop used for
-daily work by a single person should be part of this host group.
-
-So what does it change?
-
-For hosts in this special host group, the role behavior will change as not
-all `usergroups` nor every user of these usergroups are configured on the
-target. In fact, the sole user that will be added is the one which has a
-matching `workstation: <hostname>` configured in his user profile.
+ssh keys and your dotfiles. You will be touching **only your account**
 
 ### SSH keys management
 
@@ -82,11 +68,11 @@ usergroups:
   - name: vendorgroup
     # gid is optional
     gid: 1001
-
     # create vendorgroup file inside /etc/sudoers.d
     sudoers: yes
     # nopasswd is optional
     nopasswd: ALL
+
   - name: customergroup
 ```
 
@@ -122,18 +108,22 @@ $ > cat vendorgroup/users.yml
 users:
 
   - name: foo
+    comments: 'foo account'
     groups:
       - adm
       - lp
       - users
-    comments: 'foo account'
     shell: "/bin/zsh"
+
+    # optional
     ssh_domains:
       - company.domain
 
+    # optional
     dotfiles_dir: dotfiles
     vim_dir: .vim
 
+    # optional
     dotfiles_symlinks:
       - vimrc
       - bashrc
@@ -148,19 +138,23 @@ users:
       - pypirc
 
   - name: bar
+    comments: 'bar user'
     ssh_domains:
       - lan
       - example.com
-    comments: 'bar user'
 
   - name: baz
+    comments: 'baz user'
     groups:
       - users
     ssh_domains:
       - lan
       - example.org
-    comments: 'baz user'
 ```
+
+**When remote_user is different than local_user **
+
+see `users_usermap` in `defaults/main.yml`
 
 **User ssh_configuration**
 
@@ -236,12 +230,17 @@ users_usergroups: []
 # your account (i.e: deploy your ssh keys and sync your dotfiles)
 users_noadmin: no
 
+# Force expiration of new user's so they are prompted to change it on first
+# login.
+users_expire_passwords: no
+
 # Don't generate private ssh key in user accounts on every machine, consider
 # agent forwarding instead. Use this in group_vars to toggle ssh_key creation
 # in a group of hosts.
 users_generate_ssh_keys: no
 
-# SSH key rotation is disabled by default.
+# SSH key rotation is disabled by default. Enabling this implicitly enables
+# users_generate_ssh_keys.
 users_rotate_ssh_keys: no
 
 # Exclusive ssh keys on remote accounts. This is fed to the authorized_key
@@ -258,15 +257,23 @@ users_ssh_key_max_age: 60d
 # access to.
 users_default_domain: ""
 
-# Configure '/etc/skel' facility
-users_configure_skeleton: no
+# Configure '/etc/skel' facility. Useful prior accounts creation. Doing it on
+# lot of user home directory after they created is costly. This will add
+# directories as defined in users_defaults['skel'].
+users_gen_skel: no
 
-# If yes, 'usersgroups' are exclusive. That means that all unstated unix user
-# groups in play variable will be deleted along with all it's members at the
-# exception of group `nogroup`.
+# Enable this to ensure already created home matches de /etc/skel structure.
+# This task can be somewhat slow when managing lots of users on a large
+# inventory. This behavior is rather invasive and probably more suitable for
+# personal usage and/or when you have no control over /etc/skel.
+users_skel_homedir: no
+
+# If yes, 'usergroups' are exclusive. That means that all unstated unix
+# usergroups in play variable will be deleted along with all it's members at
+# the exception of group `nogroup`.
 users_exclusive_usergroups: no
 
-# List of 'usergroups' that will never be removed
+# List of 'usergroups' that will never be removed.
 users_exclusive_usergroups_exceptions:
   - vagrant
   - nogroup
@@ -281,16 +288,15 @@ users_exclusive_groupmembers: no
 users_defaults:
   state: present
   # fixme: task should generate something random per user, register it, and send to user by mail.
-  password: "changeme" # Initial user password.
   shell: "/bin/bash"
   system: no
 
   groups: omit
   append: yes         # Append to group
 
-  # Default to 'on_create' (will change passwd if they differ)
+  # Default to 'on_create' (will change passwd if they differ). Could also be
+  # set to 'always'.
   update_password: 'on_create'
-  # update_password: always
 
   # This 'home' variable is the path prefix to the directory that will contain
   # a user account. If you work on Solaris you could set this to
@@ -315,7 +321,6 @@ users_defaults:
   # Homedir skeleton.
   skel:
     - '.ssh/controlmasters'
-    - '.ssh/old_keys'
     - 'bin'
     - 'tmp'
 
@@ -336,10 +341,35 @@ users_defaults:
     - americano
     - i3
     - zsh-autosuggestion
+    - debug-refs
+    - gnupg
+    - hexchat
+    - win*
+    - wireshark
+    - _vimrc
+    - f-desktop.prf
 
-    # directories for building zsh and vim from source
+    # directories for building tmux, vim, openssh from source
     - tmux/tmux-?.?
     - vim.d/vim
+    - openssh
+
+# Sometimes, remote user account doesn't match the local one. That happens for
+# instance when host is 'mostly' controlled by your customer. Fill this dict
+# with keys such as { '<remote_username>' : '<local userneame>'}.
+users_usermap: {}
+
+# You can have shared by multiple users. Define this variable in `users.yml`
+# to have usergroup defaults different than `users_defaults`.
+usergroup_defaults:
+  passwd: ''
+
+### omited parameters
+
+# By default, the first make target is ran but you way want to override. Could
+# be useful to if hosts have no www access. This is fed to the make module
+# target argument.
+# users_dotfiles_makefile_target: ''
 
 ```
 
