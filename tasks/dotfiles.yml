@@ -4,7 +4,7 @@
 # file
 #
 # As each user might have to install his previously generated ssh public key to
-# the public git remote server before cloning or use https...
+# the public git remote server before cloning or use https['']..
 
 ### option #1: git module and www access
 - name: pull dotfiles repo with git module
@@ -12,21 +12,21 @@
     accept_hostkey: yes
     clone: yes
     recursive: yes
-    repo: "{{item.dotfiles_repo}}"
-    dest: "{{item.home|default(users_defaults.home)}}/{{item.name}}/dotfiles"
+    repo: "{{item['dotfiles_repo']}}"
+    dest: "{{item['home']|default(users_defaults['home'])}}/{{item['name']}}/dotfiles"
   with_items: "{{users|default(omit)|selectattr('dotfiles_repo','defined')|list}}"
 
 ### option #2: push from CM when no www access
 # Alternatively, if target has no www access or for whatever other reasons,
-# you can than at least useful sync stuff from a dir on the control machine.
+# you can than at least useful sync stuff from a dir on the control machine['']
 #
-## option: #2a: ssh is available.
+## option: #2a: ssh is available['']
 - include: dotfiles_rsync.yml
   when:
     - ansible_host != "localhost"
     - (ansible_connection is undefined or ansible_connection == "ssh" or ansible_connection == "smart")
 
-## option: #2a: ssh is not available.
+## option: #2a: ssh is not available['']
 - include: dotfiles_copy.yml
   when:
     - ansible_host != "localhost"
@@ -34,24 +34,24 @@
     - ansible_connection is defined and ansible_connection != "smart"
     - ansible_connection is defined and ansible_connection != "lxd"
 
-## option #3: using lxc file push for lxd connection.
+## option #3: using lxc file push for lxd connection['']
 - include: dotfiles_copy_lxc.yml
   when: ansible_connection is defined and ansible_connection == "lxd"
 
 # fixme: trigg on better conditional, this doesn't work with 'dotfiles_repo'
 - name: symlink user's dotfiles using Makefile
   make:
-    chdir: "{{item.home|default(users_defaults.home)}}/{{item.name}}/dotfiles"
+    chdir: "{{item['home']|default(users_defaults['home'])}}/{{item['name']}}/dotfiles"
     # users_dotfiles_makefile_target defaults to omit
     target: "{{users_dotfiles_makefile_target|default(omit)}}"
-  become_user: "{{item.name}}"
+  become_user: "{{item['name']}}"
   with_items: "{{users|default(omit)|selectattr('dotfiles_dir','defined')|list}}"
   when: ansible_connection != "lxd"
 
 # # fixme: trigg on better conditional, this doesn't work with 'dotfiles_repo'
 # - name: symlink user's dotfiles using Makefile
-#   shell: export USER={{item.name}} make -C {{item.home|default(users_defaults.home)}}/{{item.name}}/dotfiles install
+#   shell: export USER={{item['name']}} make -C {{item['home']|default(users_defaults['home'])}}/{{item['name']}}/dotfiles install
 #   environment:
-#     USER: "{{item.name}}"
+#     USER: "{{item['name']}}"
 #   with_items: "{{users|selectattr('dotfiles_dir','defined')|list}}"
 #   when: ansible_connection == "lxd"
