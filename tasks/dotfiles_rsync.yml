@@ -39,6 +39,7 @@
   become: no
   with_items: "{{users|default(omit)|selectattr('dotfiles_dir','defined')|list}}"
   when:
+    - ansible_user != 'root'
     - users_usermap.get(item['name'], item['name']) == lookup('env','USER')
     - users_usermap.get(item['name'], item['name']) in ansible_control_machine_users
   # environment:
@@ -54,5 +55,6 @@
   become: no
   with_items: "{{users|default(omit)|selectattr('vim_dir','defined')|list}}"
   when:
+    - ansible_user != 'root'
     - users_usermap.get(item['name'], item['name']) == lookup('env','USER')
     - users_usermap.get(item['name'], item['name']) in ansible_control_machine_users

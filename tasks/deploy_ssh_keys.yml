@@ -8,7 +8,9 @@
   ignore_errors: true
   with_items:
     - "{{users|default(omit)}}"
-  when: users_default_domain is defined and users_default_domain == ansible_domain
+  when:
+    - users_default_domain is defined
+    - users_default_domain == ansible_domain
 
 - name: install ssh_domains extra public ssh keys
   authorized_key:
