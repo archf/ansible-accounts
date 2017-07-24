@@ -44,18 +44,10 @@
     chdir: "{{item['home']|default(users_defaults['home'])}}/{{item['name']}}/dotfiles"
     # users_dotfiles_makefile_target defaults to omit
     target: "{{users_dotfiles_makefile_target|default(omit)}}"
-  become_user: "{{item['name']}}"
+  # become_user: "{{item['name']}}"
   with_items: "{{users|default(omit)|selectattr('dotfiles_dir','defined')|list}}"
   when:
-    - ansible_connection != "lxd"
-    # this is a workaround to safeguard against error when pipelining is
-    # enabled
-    - ansible_user != 'root'
-
-# # fixme: trigg on better conditional, this doesn't work with 'dotfiles_repo'
-# - name: symlink user's dotfiles using Makefile
-#   shell: export USER={{item['name']}} make -C {{item['home']|default(users_defaults['home'])}}/{{item['name']}}/dotfiles install
-#   environment:
-#     USER: "{{item['name']}}"
-#   with_items: "{{users|selectattr('dotfiles_dir','defined')|list}}"
-#   when: ansible_connection == "lxd"
+    - item['name'] == ansible_env['USER']
+    - makefile_path|exists
+  vars:
+    makefile_path: "{{ansible_env['HOME']}}/{{item['dotfiles_dir']}}/Makefile"

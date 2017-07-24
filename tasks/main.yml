@@ -2,7 +2,7 @@
 
 - set_fact:
     ansible_control_machine_users: "{{lookup('pipe', 'lslogins --noheadings --raw | awk ' + '{if ($1 >= 1000 && $1 < 65534) print $2}'|quote).split('\n')}}"
-    test: "{{lookup('pipe', 'env')}}"
+    ansible_local_user: "{{lookup('env', 'USER')}}"
 
   #######################################
   # no admin mode
@@ -12,8 +12,11 @@
   # configure your user
   - set_fact:
       users:
-        - name: "{{ansible_user}}"
+        - name: "{{ansible_env['USER']}}"
+          # todo: this should try to include a yml file by the name of the user
+          shell: "/bin/zsh"
           dotfiles_dir: "dotfiles"
+          vim_dir: ".vim"
 
   - include: deploy_ssh_keys.yml
     when: ansible_connection != 'local'

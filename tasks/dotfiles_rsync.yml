@@ -24,10 +24,12 @@
 #   https://wiki.archlinux.org/index.php/sudo#SSH_TTY_Problems
 #     -> Without a tty, sudo cannot disable echo when prompting for a password.
 #
+
+# ansible_local_user in sufficient
 - name: rsync dotfiles to target host user account
   synchronize:
     delete: yes
-    src: "{{item['home']|default(users_defaults['home'])}}/{{lookup('env','USER') if users_noadmin else users_usermap.get(item['name'], item['name'])}}/{{item['dotfiles_dir']}}"
+    src: "{{item['home']|default(users_defaults['home'])}}/{{local_user}}/{{item['dotfiles_dir']}}"
     dest: "{{item['home']|default(users_defaults['home'])}}/{{item['name']}}"
     rsync_opts:
       - "--exclude={{'{' ~ users_dotfiles_rsync_exclude|default(users_defaults['dotfiles_rsync_exclude'])|join(',') ~ '}' | replace(',', item['dotfiles_dir'] ~ '/,')}}"
@@ -39,9 +41,11 @@
   become: no
   with_items: "{{users|default(omit)|selectattr('dotfiles_dir','defined')|list}}"
   when:
-    - ansible_user != 'root'
-    - users_usermap.get(item['name'], item['name']) == lookup('env','USER')
-    - users_usermap.get(item['name'], item['name']) in ansible_control_machine_users
+    - ansible_env['USER'] == item['name']
+    - (ansible_local_user == ansible_env['USER'] or ansible_local_user == local_user)
+    - local_user in ansible_control_machine_users
+  vars:
+    local_user: "{{ansible_local_user if users_noadmin else users_usermap.get(item['name'], item['name'])}}"
   # environment:
   #    ANSIBLE_SSH_PIPELINING: False
   # when: (item['name'] in ansible_control_machine_users or users_noadmin)
@@ -50,11 +54,13 @@
 - name: rsync .vim directory to target host user account
   synchronize:
     delete: yes
-    src: "{{item['home']|default(users_defaults['home'])}}/{{lookup('env','USER') if users_noadmin else users_usermap.get(item['name'], item['name'])}}/{{item['vim_dir']}}"
+    src: "{{item['home']|default(users_defaults['home'])}}/{{local_user}}/{{item['vim_dir']}}"
     dest: "{{item['home']|default(users_defaults['home'])}}/{{item['name']}}"
   become: no
   with_items: "{{users|default(omit)|selectattr('vim_dir','defined')|list}}"
   when:
-    - ansible_user != 'root'
-    - users_usermap.get(item['name'], item['name']) == lookup('env','USER')
-    - users_usermap.get(item['name'], item['name']) in ansible_control_machine_users
+    - ansible_env['USER'] == item['name']
+    - (ansible_local_user == ansible_env['USER'] or ansible_local_user == local_user)
+    - local_user in ansible_control_machine_users
+  vars:
+    local_user: "{{ansible_local_user if users_noadmin else users_usermap.get(item['name'], item['name'])}}"

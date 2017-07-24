@@ -2,7 +2,7 @@
 
 # An external directory containing sensitive data (group profiles, public ssh
 # keys, users's ssh_config, ...etc.
-groups_dir: "{{playbook_dir}}/private/groups"
+groups_dir: "{{inventory_dir}}/private/groups"
 
 # Include debugging tasks that prints variable information when adding and
 # removing unix groups.
