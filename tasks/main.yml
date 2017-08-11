@@ -18,10 +18,14 @@
           dotfiles_dir: "dotfiles"
           vim_dir: ".vim"
 
-  - include: deploy_ssh_keys.yml
+  - include: ssh_install_pub_keys.yml
     when: ansible_connection != 'local'
+    with_items: "{{users}}"
+    loop_control:
+      loop_var: unix_user
+    vars:
+      usergroup: ""
 
-  # Note: no <user>_ssh_config to source when running in users_noadmin mode
   - include: ssh_config.yml
 
   - include: dotfiles.yml

@@ -4,11 +4,6 @@
 # keys, users's ssh_config, ...etc.
 groups_dir: "{{inventory_dir}}/private/groups"
 
-# Include debugging tasks that prints variable information when adding and
-# removing unix groups.
-groupadd_debug: no
-groupdel_debug: no
-
 users_usergroups: []
 
 # If you have no admin rights on the remote machine and you only want to deploy
@@ -156,3 +151,8 @@ usergroup_defaults:
 # be useful to if hosts have no www access. This is fed to the make module
 # target argument.
 # users_dotfiles_makefile_target: ''
+
+# Include debugging tasks that prints variable information when adding and
+# removing unix groups.
+groupadd_debug: no
+groupdel_debug: no

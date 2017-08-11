@@ -83,7 +83,7 @@
     # configured first wiht something like
     # 127.0.1.1       <hostname>.<domain> <hostname>
     # for ansible_domain to return the domain.
-    ssh_key_file: "['ssh/{{item['name']}}.{{ansible_domain|default(ansible_hostname)}}"
+    ssh_key_file: ".ssh/{{item['name']}}.{{ansible_domain|default(ansible_hostname)}}"
 
     # keys are only generated on specified host groups
     generate_ssh_key: "{{users_generate_ssh_keys}}"
@@ -161,8 +161,11 @@
   static: no
   when: users_generate_ssh_keys and generate_new_ssh_keys|changed
 
-- include: deploy_ssh_keys.yml
+- include: ssh_install_pub_keys.yml
   when: ansible_connection != 'local'
+  with_items: "{{users}}"
+  loop_control:
+    loop_var: unix_user
 
   # ssh_config
 - include: ssh_config.yml
