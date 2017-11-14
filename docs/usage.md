@@ -16,7 +16,7 @@ login on the same servers, user accounts are configured by adding one or
 multiple usergroups composed of one or more individual users that will end up
 attached to the unix group named after the usergroup name. Phew!
 
-There is also 'noadmin' mode for when you have no control over the remote
+There is also `noadmin` mode for when you have no control over the remote
 machine. You can use this on the restricted machines to deploy your public
 ssh keys and your dotfiles. You will be touching **only your account**
 

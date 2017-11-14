@@ -6,7 +6,9 @@
     key: "{{lookup('file', item)}}"
     exclusive: "{{users_exclusive_ssh_keys}}"
   with_first_found:
-    - files: "{{local_user}}.{{ansible_domain}}.pub"
+    - files:
+        - "{{local_user}}.{{ansible_domain}}.pub"
+        - "{{local_user}}.pub"
       paths:
         - "{{groups_dir}}/{{usergroup['name']}}/keys"
         - "{{unix_user['home']|default(users_defaults['home'])}}/{{local_user}}/.ssh"
@@ -19,7 +21,7 @@
 
 # if user has an account on the cm an keys are not exclusive, try to find an
 # id_rsa.pub and install it.
-- name: install {{unix_user['name']}} public ssh keys (if found)
+- name: install {{unix_user['name']}} id_rsa.pub ssh keys (if found)
   authorized_key:
     user: "{{unix_user['name']}}"
     key: "{{lookup('file', item)}}"
@@ -32,3 +34,12 @@
     - (not installed_domain_key|changed and users_exclusive_ssh_keys) or not users_exclusive_ssh_keys
   vars:
     local_user: "{{ansible_local_user if users_noadmin else users_usermap.get(unix_user['name'], unix_user['name'])}}"
+
+- name: install other authorized_keys
+  authorized_key:
+    user: "{{unix_user['name']}}"
+    key: "{{lookup('file', key_dir '/' ~ item)}}"
+  with_items: authorized_keys
+  when: authorized_keys is defined
+  vars:
+    key_dir: "{{groups_dir}}/{{usergroup['name']}}/keys"
