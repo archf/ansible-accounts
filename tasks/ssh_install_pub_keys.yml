@@ -1,6 +1,6 @@
 ---
 
-- name: install 'domain' public ssh keys
+- name: install {{unix_user['name']}} user 'domain' public ssh keys
   authorized_key:
     user: "{{unix_user['name']}}"
     key: "{{lookup('file', item)}}"
@@ -21,7 +21,7 @@
 
 # if user has an account on the cm an keys are not exclusive, try to find an
 # id_rsa.pub and install it.
-- name: install {{unix_user['name']}} id_rsa.pub ssh keys (if found)
+- name: install {{unix_user['name']}} user id_rsa.pub ssh keys (if found)
   authorized_key:
     user: "{{unix_user['name']}}"
     key: "{{lookup('file', item)}}"
@@ -35,11 +35,11 @@
   vars:
     local_user: "{{ansible_local_user if users_noadmin else users_usermap.get(unix_user['name'], unix_user['name'])}}"
 
-- name: install other authorized_keys
+- name: install {{unix_user['name']}} user other authorized_keys
   authorized_key:
     user: "{{unix_user['name']}}"
-    key: "{{lookup('file', key_dir '/' ~ item)}}"
-  with_items: authorized_keys
-  when: authorized_keys is defined
+    key: "{{lookup('file', key_dir ~ '/' ~ item)}}"
+  with_items: "{{unix_user['authorized_keys']}}"
+  when: item is defined
   vars:
     key_dir: "{{groups_dir}}/{{usergroup['name']}}/keys"

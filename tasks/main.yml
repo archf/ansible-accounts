@@ -10,15 +10,20 @@
 - block:
 
   # configure your user
+  - name: gather ansible_env facts
+    setup: gather_subset=!all
   - set_fact:
       users:
+        # this is set to remote user (not affected by --user)
+        # NOTE; requires fact gathering
         - name: "{{ansible_env['USER']}}"
           # todo: this should try to include a yml file by the name of the user
-          shell: "/bin/zsh"
+          # shell: "/bin/zsh"
           dotfiles_dir: "dotfiles"
           vim_dir: ".vim"
 
-  - include: ssh_install_pub_keys.yml
+  - debug: var=ansible_env['USER']
+  - include_tasks: ssh_install_pub_keys.yml
     when: ansible_connection != 'local'
     with_items: "{{users}}"
     loop_control:
@@ -26,10 +31,12 @@
     vars:
       usergroup: ""
 
-  - include: ssh_config.yml
+  - import_tasks: ssh_config.yml
 
-  - include: dotfiles.yml
-    when: users_noadmin and ansible_connection != 'local'
+  - import_tasks: dotfiles.yml
+    when:
+      - users_noadmin
+      - ansible_connection != 'local'
 
   when: users_noadmin
 
@@ -50,7 +57,10 @@
       dest: /etc/yum.conf
       state: present
     become: yes
-    when: ansible_distribution_major_version is defined and ansible_distribution_major_version|int < 7
+    when:
+      - ansible_distribution_major_version is defined
+      - ansible_distribution_major_version|int < 7
+      - not users_nopkgs
 
   - name: install sudo, rsync and zsh packages (required for this role)
     package: name={{item}} state=latest
@@ -59,11 +69,13 @@
         - zsh
         - sudo
         - rsync
-    when: ansible_distribution_major_version is defined
+    when:
+       - ansible_distribution_major_version is defined
+       - not users_nopkgs
 
     # add unix group for usergroup
     # manage users for each usersgroups
-  - include: groupadd.yml
+  - include_tasks: groupadd.yml
     with_items: "{{usergroups|default(omit)}}"
     loop_control:
       loop_var: usergroup
@@ -81,7 +93,7 @@
   ###############################################################
 - block:
 
-  - include: groupdel.yml
+  - include_tasks: groupdel.yml
     with_dict: "{{ansible_usergroups|default({})}}"
     when: usergroup.key not in users_exclusive_usergroups_exceptions and usergroup.key not in usergroups|map(attribute='name')|list
     loop_control:

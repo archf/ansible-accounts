@@ -17,5 +17,5 @@
     active_ssh_keys: "{{raw_active_ssh_keys.files|map(attribute='path')|get_ssh_keylist}}"
 
 # # run ansible with "-e 'groupadd_debug=True'
-- include: ssh_key_debug.yml
+- include_tasks: ssh_key_debug.yml
   when: groupadd_debug and users_generate_ssh_keys is defined and unmanaged_ssh_keys is defined

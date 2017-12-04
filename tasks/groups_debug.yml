@@ -1,7 +1,7 @@
 ---
 
 # delete all group members
-- include: groupdel_debug.yml
+- include_tasks: groupdel_debug.yml
   when: users_debug
 
 - name: delete all '{{usergroup.key}}" users

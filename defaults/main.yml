@@ -11,6 +11,10 @@ users_usergroups: []
 # your account (i.e: deploy your ssh keys and sync your dotfiles)
 users_noadmin: no
 
+# Avoid trying to install packages. Useful if you know you don't have access to
+# repositories.
+users_nopkgs: no
+
 # Force expiration of new user's so they are prompted to change it on first
 # login.
 users_expire_passwords: no

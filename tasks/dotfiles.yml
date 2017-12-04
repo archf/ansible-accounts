@@ -21,13 +21,13 @@
 # you can than at least useful sync stuff from a dir on the control machine['']
 #
 ## option: #2a: ssh is available
-- include: dotfiles_rsync.yml
+- include_tasks: dotfiles_rsync.yml
   when:
     - ansible_host != "localhost"
     - (ansible_connection is undefined or ansible_connection == "ssh" or ansible_connection == "smart")
 
 ## option: #2b: ssh is not available
-- include: dotfiles_copy.yml
+- include_tasks: dotfiles_copy.yml
   when:
     - ansible_host != "localhost"
     - ansible_connection is defined and ansible_connection != "ssh"
@@ -35,7 +35,7 @@
     - ansible_connection is defined and ansible_connection != "lxd"
 
 ## option #3: using lxc file push for lxd connection
-- include: dotfiles_copy_lxc.yml
+- include_tasks: dotfiles_copy_lxc.yml
   when: ansible_connection is defined and ansible_connection == "lxd"
 
 # fixme: trigg on better conditional, this doesn't work with 'dotfiles_repo'
