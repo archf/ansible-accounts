@@ -14,13 +14,12 @@
         - "{{unix_user['home']|default(users_defaults['home'])}}/{{local_user}}/.ssh"
       skip: true
   register: installed_domain_key
-  when:
-    - ansible_domain is defined
+  when: ansible_domain is defined
   vars:
     local_user: "{{ansible_local_user if users_noadmin else users_usermap.get(unix_user['name'], unix_user['name'])}}"
 
-# if user has an account on the cm an keys are not exclusive, try to find an
-# id_rsa.pub and install it.
+# if user has an account on the cm an keys are not exclusive, try to find
+# id_rsa.pub key and install it.
 - name: install {{unix_user['name']}} user id_rsa.pub ssh keys (if found)
   authorized_key:
     user: "{{unix_user['name']}}"
@@ -35,11 +34,19 @@
   vars:
     local_user: "{{ansible_local_user if users_noadmin else users_usermap.get(unix_user['name'], unix_user['name'])}}"
 
-- name: install {{unix_user['name']}} user other authorized_keys
+- name: install {{unix_user['name']}} user list of authorized_keys
   authorized_key:
     user: "{{unix_user['name']}}"
-    key: "{{lookup('file', key_dir ~ '/' ~ item)}}"
+    key: "{{lookup('file', keypath.strip())}}"
   with_items: "{{unix_user['authorized_keys']}}"
-  when: item is defined
+  when:
+    - item is defined
+    - (not installed_domain_key|changed and users_exclusive_ssh_keys) or not users_exclusive_ssh_keys
   vars:
     key_dir: "{{groups_dir}}/{{usergroup['name']}}/keys"
+    keypath: >-
+      {%- if ((groups_dir ~ '/' ~ usergroup['name'] ~ '/keys/' ~ item)|exists) %}
+      {{groups_dir}}/{{usergroup['name']}}/keys/{{item}}
+      {% else %}
+      {{groups_dir}}/keys/{{item}}
+      {% endif -%}

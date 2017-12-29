@@ -3,11 +3,14 @@
 - set_fact:
     ansible_control_machine_users: "{{lookup('pipe', 'lslogins --noheadings --raw | awk ' + '{if ($1 >= 1000 && $1 < 65534) print $2}'|quote).split('\n')}}"
     ansible_local_user: "{{lookup('env', 'USER')}}"
+  check_mode: True
+  tags: always
 
   #######################################
-  # no admin mode
+  # noadmin mode
   #######################################
-- block:
+- name: configure existing account (users_nodadmin=True)
+  block:
 
   # configure your user
   - name: gather ansible_env facts
@@ -15,12 +18,12 @@
   - set_fact:
       users:
         # this is set to remote user (not affected by --user)
-        # NOTE; requires fact gathering
+        # NOTE: requires fact gathering
         - name: "{{ansible_env['USER']}}"
-          # todo: this should try to include a yml file by the name of the user
           # shell: "/bin/zsh"
           dotfiles_dir: "dotfiles"
           vim_dir: ".vim"
+    check_mode: True
 
   - debug: var=ansible_env['USER']
   - include_tasks: ssh_install_pub_keys.yml
@@ -41,15 +44,12 @@
   when: users_noadmin
 
   #########################################
-  # adding users by groups (default mode)
+  # installing users basic pkgs
   #########################################
-- name: add users by unix group
+- name: install users basic packages (default mode; users_nopkgs=False)
   block:
-  - name: gather ansible_usergroups facts
-    usergroups:
-
-#  When repos' fqdn are returning AAAA records and there are no IPV6
-#  connectivity, pycurl doesn't fallback on ipv4. Not tested when IPV6INIT=no.
+  #  When repos' fqdn are returning AAAA records and there are no IPV6
+  #  connectivity, pycurl doesn't fallback on ipv4. Not tested when IPV6INIT=no.
   - name: force yum on RedHat <7 and derivatives to use ipv4
     lineinfile:
       line: "ip_resolve=4"
@@ -69,9 +69,37 @@
         - zsh
         - sudo
         - rsync
+        # identical packaeg name on both RedHat and Debian
+        - rxvt-unicode-256color
     when:
-       - ansible_distribution_major_version is defined
-       - not users_nopkgs
+       # - ansible_distribution_major_version is defined
+
+  - name: install X11 xauth on RedHat derivatives
+    package: name=xorg-x11-xauth state=latest
+    become: yes
+    when:
+       # - ansible_distribution_major_version is defined
+       - ansible_os_family == "RedHat"
+
+  - name: install X11 xauth on Debian derivatives
+    package: name=xauth state=latest
+    become: yes
+    when:
+       # - ansible_distribution_major_version is defined
+       - ansible_os_family == "Debian"
+
+  when:
+    - not users_noadmin
+    - not users_nopkgs
+  tags: pkgs
+
+  #########################################
+  # adding users by groups (default mode)
+  #########################################
+- name: add users by unix group (default mode; users_noadmin=False)
+  block:
+  - name: gather ansible_usergroups facts
+    usergroups:
 
     # add unix group for usergroup
     # manage users for each usersgroups
@@ -79,6 +107,8 @@
     with_items: "{{usergroups|default(omit)}}"
     loop_control:
       loop_var: usergroup
+    tags:
+      - accounts
 
   - debug: msg="Unix group '{{usergroup['key']}}' will be removed"
     with_dict: "{{ansible_usergroups|default({})}}"
@@ -87,11 +117,13 @@
       loop_var: usergroup
 
   when: not users_noadmin
+  tags: useradd
 
   ###############################################################
   # removing users by groups (when users_exclusive_groupmembers)
   ###############################################################
-- block:
+- name: removing users by groups
+  block:
 
   - include_tasks: groupdel.yml
     with_dict: "{{ansible_usergroups|default({})}}"
@@ -116,3 +148,4 @@
       when: item.key not in users_exclusive_usergroups_exceptions
 
   when: not users_noadmin and users_exclusive_usergroups
+  tags: userdel

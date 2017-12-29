@@ -2,7 +2,7 @@
 
 # An external directory containing sensitive data (group profiles, public ssh
 # keys, users's ssh_config, ...etc.
-groups_dir: "{{inventory_dir}}/private/groups"
+groups_dir: "{{inventory_dir}}/extra_vars/groups"
 
 users_usergroups: []
 
@@ -40,7 +40,7 @@ users_ssh_key_max_age: 60d
 # and this value. For public key to be propagated to the right machines, it
 # should match the 'ansible_domain' fact and thus hint wich realm the key gives
 # access to.
-users_default_domain: ""
+users_default_domain: null
 
 # Configure '/etc/skel' facility. Useful prior accounts creation. Doing it on
 # lot of user home directory after they created is costly. This will add
@@ -132,7 +132,6 @@ users_defaults:
     - win*
     - wireshark
     - _vimrc
-    - f-desktop.prf
 
     # directories for building tmux, vim, openssh from source
     - tmux/tmux-?.?
@@ -144,10 +143,11 @@ users_defaults:
 # with keys such as { '<remote_username>' : '<local userneame>'}.
 users_usermap: {}
 
-# You can have shared by multiple users. Define this variable in `users.yml`
-# to have usergroup defaults different than `users_defaults`.
-usergroup_defaults:
-  passwd: ''
+# Disabling this for now.
+# # You can have shared by multiple users. Define this variable in `users.yml`
+# # to have usergroup defaults different than `users_defaults`.
+# usergroup_defaults:
+#   passwd: ''
 
 ### omited parameters
 
