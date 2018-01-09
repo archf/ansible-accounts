@@ -69,6 +69,7 @@
         - zsh
         - sudo
         - rsync
+        - xsel
         # identical packaeg name on both RedHat and Debian
         - rxvt-unicode-256color
     when:

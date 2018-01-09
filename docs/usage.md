@@ -1,6 +1,7 @@
 ## User guide
 
-### requirements:
+### Requirements
+
   This roles contains tasks relying on the `synchronize` module (rsync) and
   therefore it requires the `openssh` daemon to be running.
 
@@ -22,7 +23,7 @@ ssh keys and your dotfiles. You will be touching **only your account**
 
 **SSH keys management**
 
-Private ssh keys are **only managed on workstations**. Agent-fowarding should be
+Private ssh keys are **only managed on specified hosts**. Agent-fowarding should be
 considered when using a `jumphost` or hopping through a bastion host. To make
 things manageable and flexible, following logic is used to allow a user to
 have have multiple ssh keys.
@@ -38,7 +39,7 @@ such, this is the role behavior regarding your keyring management.
   * default keys are deployed as <user>.<domain> and <user>.<domain>.pub on workstations
   * public keys will be deployed exclusively on target where ansible_fqdn == <user>.<domain>
   * ssh keys can be rotated, this behavior is disabled by default
-  * keypairs are created on workstations at user account creations
+  * keypairs are created on specified hosts at user account creations
   * all public keys of configured keypairs are fetched back to usergroup keyring
   * private keys are never fetched to the usergroup keyring
   * other keys can be requested to be generated at user account creation

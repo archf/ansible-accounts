@@ -2,24 +2,23 @@
 
 # NOTE: you won't get here if users_noadmin=yes
 
+# - debug: var=usergroups
 # - debug: var=usergroup
 
 - name: set users var
   block:
   - name: source {{usergroup['name']}} profile
-    include_vars: "{{users_files}}"
+    include_vars: "{{users_file}}"
     when: users_file|exists
-    vars:
-      users_file: "{{groups_dir}}/{{usergroup['name']}}/users.yml"
 
   - set_fact:
       users: "{{usergroup['users']}}"
     when: not (users_file|exists)
-    vars:
-      users_file: "{{groups_dir}}/{{usergroup['name']}}/users.yml"
 
   check_mode: True
   tags: always
+  vars:
+    users_file: "{{groups_dir}}/{{usergroup['name']}}/users.yml"
 
 - name: adding unix usergroup to host
   group: name={{usergroup['name']}} state=present gid={{usergroup['gid']|default(omit)}}
