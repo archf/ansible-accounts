@@ -38,16 +38,17 @@
 - include_tasks: dotfiles_copy_lxc.yml
   when: ansible_connection is defined and ansible_connection == "lxd"
 
-# fixme: trigg on better conditional, this doesn't work with 'dotfiles_repo'
 - name: symlink users dotfiles (requires Makefile)
   make:
-    chdir: "{{item['home']|default(users_defaults['home'])}}/{{item['name']}}/dotfiles"
-    # users_dotfiles_makefile_target defaults to omit
+    # chdir: "{{item['home']|default(users_defaults['home'])}}/{{item['name']}}/dotfiles"
+    chdir: "{{makefile_dir|dirname}}"
     target: "{{users_dotfiles_makefile_target|default(omit)}}"
   # become_user: "{{item['name']}}"
   with_items: "{{users|default(omit)|selectattr('dotfiles_dir','defined')|list}}"
   when:
+    # disable cond while https://github.com/ansible/ansible/issues/30351
+    # workaround: include this task file with 'static: no'
+    # - makefile_dir|exists
     - item['name'] == ansible_env['USER']
-    - makefile_path|exists
   vars:
-    makefile_path: "{{ansible_env['HOME']}}/{{item['dotfiles_dir']}}/Makefile"
+    makefile_dir: "{{ansible_env['HOME']}}/{{item['dotfiles_dir']}}/Makefile"

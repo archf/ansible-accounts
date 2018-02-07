@@ -195,6 +195,7 @@
 # dotfiles
 #############################
 - include_tasks: dotfiles.yml
+  static: no
   tags: dotfiles
 
 #############################

@@ -12,34 +12,33 @@
 - name: configure existing account (users_nodadmin=True)
   block:
 
-  # configure your user
-  - name: gather ansible_env facts
-    setup: gather_subset=!all
-  - set_fact:
-      users:
-        # this is set to remote user (not affected by --user)
-        # NOTE: requires fact gathering
-        - name: "{{ansible_env['USER']}}"
-          # shell: "/bin/zsh"
-          dotfiles_dir: "dotfiles"
-          vim_dir: ".vim"
-    check_mode: True
+    # configure your user
+    - name: gather ansible_env facts
+      setup: gather_subset=!all
+    - set_fact:
+        users:
+          # this is set to remote user (not affected by --user)
+          # NOTE: requires fact gathering
+          - name: "{{ansible_env['USER']}}"
+            # shell: "/bin/zsh"
+            dotfiles_dir: "dotfiles"
+            vim_dir: ".vim"
+      check_mode: True
 
-  - debug: var=ansible_env['USER']
-  - include_tasks: ssh_install_pub_keys.yml
-    when: ansible_connection != 'local'
-    with_items: "{{users}}"
-    loop_control:
-      loop_var: unix_user
-    vars:
-      usergroup: ""
+    - include_tasks: ssh_install_pub_keys.yml
+      when: ansible_connection != 'local'
+      with_items: "{{users}}"
+      loop_control:
+        loop_var: unix_user
+      vars:
+        usergroup: ""
 
-  - import_tasks: ssh_config.yml
+    # - include_tasks: ssh_config.yml
 
-  - import_tasks: dotfiles.yml
-    when:
-      - users_noadmin
-      - ansible_connection != 'local'
+    - import_tasks: dotfiles.yml
+      when:
+        - users_noadmin
+        - ansible_connection != 'local'
 
   when: users_noadmin
 
@@ -71,12 +70,15 @@
         - rsync
         - xsel
         # identical packaeg name on both RedHat and Debian
-        - rxvt-unicode-256color
+        # - rxvt-unicode-256color
     when:
        # - ansible_distribution_major_version is defined
 
-  - name: install X11 xauth on RedHat derivatives
-    package: name=xorg-x11-xauth state=latest
+  - name: install vim and X11 xauth on RedHat derivatives
+    package: name={{item}} state=latest
+    with_items:
+      - xorg-x11-xauth
+      - vim-enhanced.x86_64
     become: yes
     when:
        # - ansible_distribution_major_version is defined
