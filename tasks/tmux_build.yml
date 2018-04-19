@@ -1,0 +1,12 @@
+---
+
+- name: build tmux
+  make:
+    chdir: "{{makefile_dir}}"
+    target: tmux
+
+- name: install tmux
+  make:
+    chdir: "{{makefile_dir|dirname}}/tmux.d"
+    target: "install"
+  become: yes
