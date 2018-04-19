@@ -10,7 +10,7 @@
   include_vars: "{{groups_dir}}/{{usergroup.name}}/{{item.name}}_ssh_config.yml"
   # ignore missing
   ignore_errors: yes
-  with_items: "{{users|default(omit)}}"
+  loop: "{{users}}"
   check_mode: yes
   register: sourced_ssh_configs
 
@@ -23,5 +23,5 @@
     group: "{{usergroup.name}}"
     mode: 0600
     backup: yes
-  with_items: "{{sourced_ssh_configs.results|default(omit)}}"
+  loop: "{{sourced_ssh_configs.results|default(omit)}}"
   when:  sourced_ssh_configs['results'] is defined and item|succeeded

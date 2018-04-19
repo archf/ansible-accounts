@@ -11,7 +11,7 @@
     # userdel --remove behavior (Files in the user's home directory will be
     # removed along with the home directory itself and the user's mail spool)
     remove: yes
-  with_items: "{{usergroup['value']['users']}}"
+  loop: "{{usergroup['value']['users']}}"
   when: usergroup['value']['users']
 
 - name: delete unix group '{{usergroup.key}}

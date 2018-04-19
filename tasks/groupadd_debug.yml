@@ -6,8 +6,8 @@
 - debug: var=users
 - debug: var=new_users.results
 - debug: var=users_default_domain
-- debug: var=ansible_fqdn
-- debug: var=ansible_domain
+- debug: var=ansible_facts['fqdn']
+- debug: var=ansible_facts['domain']
 - debug: msg="{{groups_dir}}/{{usergroup.name}}/keys"
 - debug: var=raw_active_ssh_keys
 - debug: var=managed_ssh_keys

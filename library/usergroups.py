@@ -47,8 +47,8 @@ def main():
             if g[2] > 999:
                 groupdict[g[0]] = {'gid': g[2], 'users': g[3]}
 
-    module.exit_json(ansible_facts={'ansible_usergroups': groupdict})
-    # module.exit_json(ansible_facts={'ansible_usergroups': grouplist})
+    module.exit_json(ansible_facts={'a_usergroups': groupdict})
+    # module.exit_json(ansible_facts={'a_usergroups': grouplist})
 
 if __name__ == '__main__':
     main()

@@ -25,7 +25,9 @@
 #     -> Without a tty, sudo cannot disable echo when prompting for a password.
 #
 
-# ansible_local_user in sufficient
+# a_local_user in sufficient
+#
+
 - name: rsync dotfiles to target host user account
   synchronize:
     delete: yes
@@ -34,21 +36,20 @@
     rsync_opts:
       - "--exclude={{'{' ~ users_dotfiles_rsync_exclude|default(users_defaults['dotfiles_rsync_exclude'])|join(',') ~ '}' | replace(',', item['dotfiles_dir'] ~ '/,')}}"
       - "--delete-excluded"
-
   # put user@ for the remote path, define the remote user for a host that does
   # not match the inventory
   # set_remote_user: no
   become: no
-  with_items: "{{users|default(omit)|selectattr('dotfiles_dir','defined')|list}}"
+  loop: "{{users|selectattr('dotfiles_dir','defined')|list}}"
   when:
-    - ansible_env['USER'] == item['name']
-    - (ansible_local_user == ansible_env['USER'] or ansible_local_user == local_user)
-    - local_user in ansible_control_machine_users
+    - ansible_facts['env']['USER'] == item['name']
+    - (a_local_user == ansible_facts['env']['USER'] or a_local_user == local_user)
+    - local_user in a_control_machine_users
   vars:
-    local_user: "{{ansible_local_user if users_noadmin else users_usermap.get(item['name'], item['name'])}}"
+    local_user: "{{a_local_user if users_noadmin else users_usermap.get(item['name'], item['name'])}}"
   # environment:
   #    ANSIBLE_SSH_PIPELINING: False
-  # when: (item['name'] in ansible_control_machine_users or users_noadmin)
+  # when: (item['name'] in a_control_machine_users or users_noadmin)
   # ANSIBLE_SSH_ARGS
 
 - name: rsync .vim directory to target host user account
@@ -57,10 +58,10 @@
     src: "{{item['home']|default(users_defaults['home'])}}/{{local_user}}/{{item['vim_dir']}}"
     dest: "{{item['home']|default(users_defaults['home'])}}/{{item['name']}}"
   become: no
-  with_items: "{{users|default(omit)|selectattr('vim_dir','defined')|list}}"
+  loop: "{{users|selectattr('vim_dir','defined')|list}}"
   when:
-    - ansible_env['USER'] == item['name']
-    - (ansible_local_user == ansible_env['USER'] or ansible_local_user == local_user)
-    - local_user in ansible_control_machine_users
+    - ansible_facts['env']['USER'] == item['name']
+    - (a_local_user == ansible_facts['env']['USER'] or a_local_user == local_user)
+    - local_user in a_control_machine_users
   vars:
-    local_user: "{{ansible_local_user if users_noadmin else users_usermap.get(item['name'], item['name'])}}"
+    local_user: "{{a_local_user if users_noadmin else users_usermap.get(item['name'], item['name'])}}"

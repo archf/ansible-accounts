@@ -7,13 +7,13 @@
     dest: "{{item['home']|default(users_defaults['home'])}}/{{item['name']}}/"
     owner: "{{item['name']}}"
     group: "{{usergroup['name']}}"
-  with_items: "{{users|default(omit)|selectattr('dotfiles_dir','defined')|list}}"
+  loop: "{{users|selectattr('dotfiles_dir','defined')|list}}"
   when:
-    - ansible_env['USER'] == item['name']
-    - (ansible_local_user == ansible_env['USER'] or ansible_local_user == local_user)
-    - local_user in ansible_control_machine_users
+    - ansible_facts['env']['USER'] == item['name']
+    - a_local_user == ansible_facts['env']['USER'] or a_local_user == local_user
+    - local_user in a_control_machine_users
   vars:
-    local_user: "{{users_usermap.get((item['name'], item['name'])}}"
+    local_user: "{{users_usermap.get(item['name'], item['name'])}}"
 
 - name: copy .vim directory to target host user account
   copy:
@@ -21,10 +21,10 @@
     dest: "{{item['home']|default(users_defaults['home'])}}/{{item['name']}}/"
     owner: "{{item['name']}}"
     group: "{{usergroup['name']}}"
-  with_items: "{{users|default(omit)|selectattr('vim_dir','defined')|list}}"
+  loop: "{{users|selectattr('vim_dir','defined')|list}}"
   when:
-    - ansible_env['USER'] == item['name']
-    - (ansible_local_user == ansible_env['USER'] or ansible_local_user == local_user)
-    - local_user in ansible_control_machine_users
+    - ansible_facts['env']['USER'] == item['name']
+    - a_local_user == ansible_facts['env']['USER'] or a_local_user == local_user
+    - local_user in a_control_machine_users
   vars:
-    local_user: "{{users_usermap.get((item['name'], item['name'])}}"
+    local_user: "{{users_usermap.get(item['name'], item['name'])}}"

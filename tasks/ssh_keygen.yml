@@ -25,7 +25,5 @@
 - name: generate new ssh keys
   command: ssh-keygen -q -N 'changeme' -f ~/.ssh/{{item.0.user}}.{{item.1}}
   become_user: "{{item.0.user}}"
-  with_subelements:
-    - "{{new_ssh_keys}}"
-    - ssh_domains
+  loop: lookup('subelements',  new_ssh_keys, ssh_domains)
   register: generate_new_ssh_keys

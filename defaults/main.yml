@@ -2,7 +2,7 @@
 
 # An external directory containing sensitive data (group profiles, public ssh
 # keys, users's ssh_config, ...etc.
-groups_dir: "{{inventory_dir}}/extra_vars/groups"
+groups_dir: "{{inventory_dir}}/extra_vars/usergroups"
 
 users_usergroups: []
 
@@ -14,6 +14,10 @@ users_noadmin: no
 # Avoid trying to install packages. Useful if you know you don't have access to
 # repositories.
 users_nopkgs: no
+
+# Build and install tmux. Useful on CentOS hosts as Tmux EPEL packages is
+# oudated.
+users_build_tmux: no
 
 # Force expiration of new user's so they are prompted to change it on first
 # login.

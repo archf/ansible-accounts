@@ -15,7 +15,7 @@
   command: >
     mv {{groups_dir}}/{{usergroup['name']}}/keys/{{item}}.pub
       {{groups_dir}}/{{usergroup['name']}}/old_keys/
-  with_items: "{{unmanaged_ssh_keys|default(omit)}}"
+  loop: "{{unmanaged_ssh_keys|default(omit)}}"
   delegate_to: localhost
   # ignore missing
   ignore_errors: true
@@ -24,7 +24,7 @@
 - name: backup '{{usergroup['name']}}' target's unmanaged keypairs to user's ~/.ssh/old_keys
   command: mv ~/.ssh/{{item}} ~/.ssh/old_keys/
   become_user: "{{item.split('.', 1)}}"
-  with_items: "{{unmanaged_ssh_keys|default(omit)}}"
+  loop: "{{unmanaged_ssh_keys|default(omit)}}"
 
 ####################
 # ssh key rotation
@@ -48,7 +48,7 @@
   command: >
     mv {{groups_dir}}/{usergroup['name']}}/keys/{{item}}.pub
       {{groups_dir}}/{{usergroup['name']}}/old_keys/
-  with_items: "{{expired_ssh_keys|default(omit)}}"
+  loop: "{{expired_ssh_keys|default(omit)}}"
   delegate_to: localhost
   # ignore missing
   ignore_errors: true
@@ -57,7 +57,7 @@
 - name: move expired keypairs to user's ~/.ssh/old_keys
   command: mv ~/.ssh/{{item}}* ~/.ssh/old_keys/
   become_user: "{{item.split('.', 1)}}"
-  with_items: "{{expired_ssh_keys|default(omit)}}"
+  loop: "{{expired_ssh_keys|default(omit)}}"
 
 - name: set {{usergroup['name']}} 'new_ssh_keys' lists /w expired keys
   set_fact:

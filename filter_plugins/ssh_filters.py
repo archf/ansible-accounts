@@ -3,7 +3,7 @@ from __future__ import (absolute_import, division, print_function)
 
 from os import path
 from ansible.errors import AnsibleFilterError
-
+from types import GeneratorType
 
 __metaclass__ = type
 
@@ -14,7 +14,7 @@ def split_keynames(knames):
 
     Arg must be a list.
 
-    Example of expected input:
+    Example of expected input (list of knames):
 
         input = ["foo.lan",
                 "foo.example.org",
@@ -29,12 +29,11 @@ def split_keynames(knames):
                 {'name': 'bar',
                 'ssh_domains': ['wan', 'example.org']}]
     """
-
-    if not isinstance(knames, list):
+    # fixme: make it accept a generator
+    if not isinstance(knames, list) or not isinstance(knames, GeneratorType):
         raise AnsibleFilterError("| expects lists, got " + repr(knames))
 
     r = []
-
     for kname in knames:
         try:
             v = kname.split(".", 1)
@@ -53,11 +52,9 @@ def split_keynames(knames):
 
                     r[i]["ssh_domains"].append(v[1])
                     found = True
-
                 # append to list
                 else:
                     found = False
-
         if not found:
                 r.append({"user": v[0], "ssh_domains": [v[1]]})
 
@@ -71,7 +68,6 @@ def get_managed_keys(users, default_domain):
     Managed keys are those defined in users.yml inside the 'users' variable.
     Return a list of basename in the form <owner>.<ssh_domain>.
     """
-
     if not isinstance(users, list):
         raise AnsibleFilterError("| expects lists, got " + repr(users))
 
@@ -94,9 +90,7 @@ def get_ssh_keylist(kpaths):
     """
     Get a list of ssh keys from absolute paths.
 
-
     kpaths is a generator returned by another jinja2 filter.
-
     Here is the input arg before path is filtered with the jinja2 map filter
     and only paths are fed to this function.
 
@@ -117,12 +111,9 @@ def get_ssh_keylist(kpaths):
 
     Returned expired keys have no '.pub' extension.
     """
-
     r = []
-
     for kpath in kpaths:
         r.append(path.splitext(path.basename(kpath))[0])
-
     return r
 
 

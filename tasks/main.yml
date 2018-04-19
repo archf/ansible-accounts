@@ -1,8 +1,8 @@
 ---
 
 - set_fact:
-    ansible_control_machine_users: "{{lookup('pipe', 'lslogins --noheadings --raw | awk ' + '{if ($1 >= 1000 && $1 < 65534) print $2}'|quote).split('\n')}}"
-    ansible_local_user: "{{lookup('env', 'USER')}}"
+    a_control_machine_users: "{{lookup('pipe', 'lslogins --noheadings --raw | awk ' + '{if ($1 >= 1000 && $1 < 65534) print $2}'|quote).split('\n')}}"
+    a_local_user: "{{lookup('env', 'USER')}}"
   check_mode: True
   tags: always
 
@@ -19,7 +19,7 @@
         users:
           # this is set to remote user (not affected by --user)
           # NOTE: requires fact gathering
-          - name: "{{ansible_env['USER']}}"
+          - name: "{{ansible_facts['env']['USER']}}"
             # shell: "/bin/zsh"
             dotfiles_dir: "dotfiles"
             vim_dir: ".vim"
@@ -27,7 +27,7 @@
 
     - include_tasks: ssh_install_pub_keys.yml
       when: ansible_connection != 'local'
-      with_items: "{{users}}"
+      loop: "{{users}}"
       loop_control:
         loop_var: unix_user
       vars:
@@ -57,39 +57,36 @@
       state: present
     become: yes
     when:
-      - ansible_distribution_major_version is defined
-      - ansible_distribution_major_version|int < 7
+      - ansible_facts['distribution_major_version'] is defined
+      - ansible_facts['distribution_major_version']|int < 7
       - not users_nopkgs
 
   - name: install sudo, rsync and zsh packages (required for this role)
     package: name={{item}} state=latest
     become: yes
-    with_items:
+    loop:
         - zsh
         - sudo
         - rsync
+        - make
         - xsel
         # identical packaeg name on both RedHat and Debian
         # - rxvt-unicode-256color
-    when:
-       # - ansible_distribution_major_version is defined
 
   - name: install vim and X11 xauth on RedHat derivatives
     package: name={{item}} state=latest
-    with_items:
+    loop:
       - xorg-x11-xauth
       - vim-enhanced.x86_64
     become: yes
     when:
-       # - ansible_distribution_major_version is defined
-       - ansible_os_family == "RedHat"
+       - ansible_facts['os_family'] == "RedHat"
 
   - name: install X11 xauth on Debian derivatives
     package: name=xauth state=latest
     become: yes
     when:
-       # - ansible_distribution_major_version is defined
-       - ansible_os_family == "Debian"
+       - ansible_facts['os_family'] == "Debian"
 
   when:
     - not users_noadmin
@@ -101,21 +98,24 @@
   #########################################
 - name: add users by unix group (default mode; users_noadmin=False)
   block:
-  - name: gather ansible_usergroups facts
+  - name: gather a_usergroups facts
     usergroups:
 
     # add unix group for usergroup
     # manage users for each usersgroups
   - include_tasks: groupadd.yml
-    with_items: "{{usergroups|default(omit)}}"
+    loop: "{{usergroups}}"
     loop_control:
       loop_var: usergroup
     tags:
       - accounts
 
   - debug: msg="Unix group '{{usergroup['key']}}' will be removed"
-    with_dict: "{{ansible_usergroups|default({})}}"
-    when: usergroups is defined and groupdel_debug and usergroup.key not in users_exclusive_usergroups_exceptions and usergroup.key not in usergroups|map(attribute='name')|list
+    with_dict: "{{ansible_facts['a_usergroups']|default({})}}"
+    when:
+      - usergroups is defined
+      - groupdel_debug and usergroup.key not in users_exclusive_usergroups_exceptions
+      - a_usergroup.key not in usergroups|map(attribute='name')|list
     loop_control:
       loop_var: usergroup
 
@@ -130,7 +130,9 @@
 
   - include_tasks: groupdel.yml
     with_dict: "{{ansible_usergroups|default({})}}"
-    when: usergroup.key not in users_exclusive_usergroups_exceptions and usergroup.key not in usergroups|map(attribute='name')|list
+    when:
+      - usergroup.key not in users_exclusive_usergroups_exceptions
+      - usergroup.key not in usergroups|map(attribute='name')|list
     loop_control:
       loop_var: usergroup
 

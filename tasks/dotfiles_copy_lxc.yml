@@ -4,16 +4,16 @@
 - name: copy dotfiles to target host user account
   command: lxc file push --recursive --create-dirs {{item.home|default(users_defaults.home)}}/{{item.name}}/{{item.dotfiles_dir}} {{ansible_hostname}}{{item.home|default(users_defaults.home)}}/{{item.name}}
   delegate_to: localhost
-  with_items: "{{users|default(omit)|selectattr('dotfiles_dir','defined')|list}}"
+  loop: "{{users|selectattr('dotfiles_dir','defined')|list}}"
   when:
-    - users_usermap.get(item['name'], item['name']) in ansible_control_machine_users
+    - users_usermap.get(item['name'], item['name']) in a_control_machine_users
 
 - name: copy vimdir to target host user account
   command: lxc file push --recursive --create-dirs {{item.home|default(users_defaults.home)}}/{{item.name}}/{{item.vim_dir}} {{ansible_hostname}}{{item.home|default(users_defaults.home)}}/{{item.name}}
   delegate_to: localhost
-  with_items: "{{users|default(omit)|selectattr('vim_dir','defined')|list}}"
+  loop: "{{users|selectattr('vim_dir','defined')|list}}"
   when:
-    - users_usermap.get(item['name'], item['name']) in ansible_control_machine_users
+    - users_usermap.get(item['name'], item['name']) in a_control_machine_users
 
 # fixme: you can only connect as root with lxd connection
 - name: adjust home folders perms (after lxd file push)
@@ -22,6 +22,6 @@
     recurse: yes
     owner: "{{item['name']}}"
     group: "{{usergroup['name']}}"
-  with_items: "{{users|default(omit)}}"
+  loop: "{{users|default(omit)}}"
   when:
-    - users_usermap.get(item['name'], item['name']) in ansible_control_machine_users
+    - users_usermap.get(item['name'], item['name']) in a_control_machine_users
