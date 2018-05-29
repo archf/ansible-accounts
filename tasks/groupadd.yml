@@ -1,17 +1,19 @@
 ---
 
-# NOTE: you won't get here if users_noadmin=yes
-
-# - debug: var=usergroups
-# - debug: var=usergroup
-
+# Complete users list may come either:
+#   - from ansible inventory
+#   - for outside ansible inventory (users.yml) Useful for handling serveral
+  #   usergroups with each their own file.
 - name: set users var
   block:
-  - name: source {{usergroup['name']}} profile
+  - name: set users var from users.yml - "{{usergroup['name']}}"
     include_vars: "{{users_file}}"
-    when: users_file is exists
+    when:
+      - "'users' not in usergroup.keys()|list"
+      - users_file is exists
 
-  - set_fact:
+  - name: set users vars from inventory - "{{usergroup['name']}}"
+    set_fact:
       users: "{{usergroup['users']}}"
     when: not (users_file is exists)
 
@@ -19,24 +21,6 @@
   tags: always
   vars:
     users_file: "{{groups_dir}}/{{usergroup['name']}}/users.yml"
-
-- name: adding unix usergroup to host
-  group: name={{usergroup['name']}} state=present gid={{usergroup['gid']|default(omit)}}
-
-- name: template {{usergroup['name']}} sudoers entry
-  template:
-    src: sudoers.j2
-    dest: /etc/sudoers.d/{{usergroup['name']}}
-    owner: root
-    group: root
-    validate: "visudo -cf %s"
-  become: yes
-  when: usergroup['sudoers'] is defined
-
-# todo:
-#   - name: generate a random password hash per managed user
-#   - name: send new private ssh key name by email
-#   - name: send new key passphrase in separate mail
 
 # useful when you do not have control over '/etc/skel' template.
 - name: scaffold '/etc/skel'
@@ -54,6 +38,27 @@
   tags:
     - skel
 
+##############################
+# usegroups & users
+##############################
+- name: adding unix usergroup to host
+  group: name={{usergroup['name']}} state=present gid={{usergroup['gid']|default(omit)}}
+
+- name: template {{usergroup['name']}} sudoers entry
+  template:
+    src: sudoers.j2
+    dest: /etc/sudoers.d/{{usergroup['name']}}
+    owner: root
+    group: root
+    validate: "visudo -cf %s"
+  become: yes
+  when: usergroup['sudoers'] is defined
+
+# todo: password and priv key management
+#   - name: generate a random password hash per managed user
+#   - name: send new private ssh key name by email
+#   - name: send new key passphrase in separate mail
+
 - name: adding user accounts (and register new_users fact)
   user:
     # account username
@@ -69,7 +74,7 @@
     # sets the user's primary group
     # this will only set the users' gid, group name is passed to '-g' options of
     # useradd
-    group: "{{usergroup['name'] if not users_noadmin else omit}}"
+    group: "{{usergroup['name']|default(omit)}}"
     password: "{{item['password']|default(usergroup['password'])|password_hash('sha512') if (item.password is defined or usergroup['password'] is defined) else omit}}"
     update_password: "{{item['update_password']|default(users_defaults.update_password)}}"
     createhome: "{{item['createhome']|default(users_defaults['createhome'])}}"
@@ -170,7 +175,7 @@
   - include_tasks: ssh_rotate_keys.yml
     when: users_rotate_ssh_keys
 
-    # generate ssh keys
+    # generate ssh keys (for each user using ssh-keygen)
   - include_tasks: ssh_keygen.yml
     when: users_generate_ssh_keys
 
@@ -179,22 +184,12 @@
     static: no
     when: users_generate_ssh_keys and generate_new_ssh_keys|changed
 
-  - include_tasks: ssh_install_pub_keys.yml
-    when: ansible_connection != 'local'
-    loop: "{{users}}"
-    loop_control:
-      loop_var: unix_user
+  tags: ssh-private-keys
 
-    # ssh_config
-    # - import_tasks: ssh_config.yml
-  tags: ssh-keys
-
-#############################
-# dotfiles
-#############################
-- include_tasks: dotfiles.yml
-  static: no
-  tags: dotfiles
+##############################
+# account configuration
+##############################
+- include_tasks: account.yml
 
 #############################
 # users deletion

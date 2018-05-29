@@ -9,11 +9,12 @@
 ################################
 
 # Prior to executing this task, we have moved existing keypairs to avoid
-# ssh-keygent runtime error while attempting to overwrite a keyfile. Be
+# ssh-keygen runtime error while attempting to overwrite a keyfile. Be
 # careful moving this task around. We can safely do an union because we
 # registered expired key *after* deletion of unmanaged keypairs. We are now
 # sure to not recreate an expired keys that became also unmanaged.
-# However if examining lists content on check run '-C' will be slightly
+
+# If examining lists content on check run '-C' will be slightly
 # wrong.
 
 # ssh-keygen reminder:

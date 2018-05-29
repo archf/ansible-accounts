@@ -6,14 +6,18 @@
   delegate_to: localhost
   loop: "{{users|selectattr('dotfiles_dir','defined')|list}}"
   when:
-    - users_usermap.get(item['name'], item['name']) in a_control_machine_users
+    - cm_user == a_cm_user
+  vars:
+    cm_user: "{{users_usermap.get(item['name'], item['name'])}}"
 
 - name: copy vimdir to target host user account
   command: lxc file push --recursive --create-dirs {{item.home|default(users_defaults.home)}}/{{item.name}}/{{item.vim_dir}} {{ansible_hostname}}{{item.home|default(users_defaults.home)}}/{{item.name}}
   delegate_to: localhost
   loop: "{{users|selectattr('vim_dir','defined')|list}}"
   when:
-    - users_usermap.get(item['name'], item['name']) in a_control_machine_users
+    - cm_user == a_cm_user
+  vars:
+    cm_user: "{{users_usermap.get(item['name'], item['name'])}}"
 
 # fixme: you can only connect as root with lxd connection
 - name: adjust home folders perms (after lxd file push)
@@ -24,4 +28,6 @@
     group: "{{usergroup['name']}}"
   loop: "{{users|default(omit)}}"
   when:
-    - users_usermap.get(item['name'], item['name']) in a_control_machine_users
+    - cm_user == a_cm_user
+  vars:
+    cm_user: "{{users_usermap.get(item['name'], item['name'])}}"

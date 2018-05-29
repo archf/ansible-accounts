@@ -1,0 +1,66 @@
+---
+
+# included from multiples places, therefore content must remain in this task
+# file
+#
+# As each user might have to install his previously generated ssh public key to
+# the public git remote server before cloning or use https..
+
+# # option #1: git module and www access
+# - name: pull dotfiles repo with git module
+#   git:
+#     accept_hostkey: yes
+#     clone: yes
+#     recursive: yes
+#     repo: "{{item['dotfiles_repo']}}"
+#     dest: "{{item['home']|default(users_defaults['home'])}}/{{item['name']}}/dotfiles"
+#   loop: "{{users|selectattr('dotfiles_repo','defined')|list}}"
+
+# option #2: push from CM when no www access
+#   Alternatively, if target has no www access or for whatever other reasons,
+#   you can than at least sync useful stuff from a dir on the control
+#   machine.
+
+- block:
+  ## option: #2a: ssh is available
+  - import_tasks: account_dotfiles_rsync.yml
+    when:
+      - (ansible_connection is undefined or ansible_connection == "ssh" or ansible_connection == "smart")
+  ## option: #2b: ssh is not available
+  - import_tasks: account_dotfiles_copy.yml
+    when:
+      - ansible_connection is defined and ansible_connection != "ssh"
+      - ansible_connection is defined and ansible_connection != "smart"
+      - ansible_connection is defined and ansible_connection != "lxd"
+  when:
+    - ansible_host != "localhost"
+    # - ansible_facts['env']['USER'] == a_cm_user
+    # - cm_user == a_cm_user
+    # user account to sync from must be available on control machine
+    # - cm_user in a_control_machine_users
+
+# option #3: using lxc file push for lxd connection
+- import_tasks: account_dotfiles_copy_lxc.yml
+  when:
+    - ansible_connection is defined
+    - ansible_connection == "lxd"
+
+# - debug: var=ansible_facts['env']['HOME']
+
+- name: exec users makefile
+  make:
+    chdir: "{{ansible_facts['env']['HOME']}}/{{item['dotfiles_dir']}}"
+    target: "{{users_dotfiles_makefile_target|default(omit)}}"
+  become_user: "{{item['name']}}"
+  loop: "{{users}}"
+  when:
+    - item['dotfiles_dir'] is defined
+    # disable cond while https://github.com/ansible/ansible/issues/30351
+    # - makefile_dir is file
+    # - "ansible_facts['env']['HOME']/item['dotfiles_dir']" is file
+    # - item['name'] == ansible_facts['env']['USER']
+
+  ignore_errors: true
+
+  # vars:
+  #     makefile_dir: "{{ansible_facts['env']['HOME']}}/{{item['dotfiles_dir']}}/Makefile"

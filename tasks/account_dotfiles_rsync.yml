@@ -25,43 +25,37 @@
 #     -> Without a tty, sudo cannot disable echo when prompting for a password.
 #
 
-# a_local_user in sufficient
-#
-
 - name: rsync dotfiles to target host user account
   synchronize:
     delete: yes
-    src: "{{item['home']|default(users_defaults['home'])}}/{{local_user}}/{{item['dotfiles_dir']}}"
+    src: "{{item['home']|default(users_defaults['home'])}}/{{cm_user}}/{{item['dotfiles_dir']}}"
     dest: "{{item['home']|default(users_defaults['home'])}}/{{item['name']}}"
     rsync_opts:
       - "--exclude={{'{' ~ users_dotfiles_rsync_exclude|default(users_defaults['dotfiles_rsync_exclude'])|join(',') ~ '}' | replace(',', item['dotfiles_dir'] ~ '/,')}}"
       - "--delete-excluded"
+
   # put user@ for the remote path, define the remote user for a host that does
   # not match the inventory
   # set_remote_user: no
   become: no
   loop: "{{users|selectattr('dotfiles_dir','defined')|list}}"
   when:
-    - ansible_facts['env']['USER'] == item['name']
-    - (a_local_user == ansible_facts['env']['USER'] or a_local_user == local_user)
-    - local_user in a_control_machine_users
-  vars:
-    local_user: "{{a_local_user if users_noadmin else users_usermap.get(item['name'], item['name'])}}"
+    - cm_user == a_cm_user
   # environment:
   #    ANSIBLE_SSH_PIPELINING: False
   # when: (item['name'] in a_control_machine_users or users_noadmin)
   # ANSIBLE_SSH_ARGS
+  vars:
+    cm_user: "{{users_usermap.get(item['name'], item['name'])}}"
 
 - name: rsync .vim directory to target host user account
   synchronize:
     delete: yes
-    src: "{{item['home']|default(users_defaults['home'])}}/{{local_user}}/{{item['vim_dir']}}"
+    src: "{{item['home']|default(users_defaults['home'])}}/{{cm_user}}/{{item['vim_dir']}}"
     dest: "{{item['home']|default(users_defaults['home'])}}/{{item['name']}}"
   become: no
   loop: "{{users|selectattr('vim_dir','defined')|list}}"
   when:
-    - ansible_facts['env']['USER'] == item['name']
-    - (a_local_user == ansible_facts['env']['USER'] or a_local_user == local_user)
-    - local_user in a_control_machine_users
+    - cm_user == a_cm_user
   vars:
-    local_user: "{{a_local_user if users_noadmin else users_usermap.get(item['name'], item['name'])}}"
+    cm_user: "{{users_usermap.get(item['name'], item['name'])}}"

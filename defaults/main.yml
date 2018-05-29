@@ -6,18 +6,9 @@ groups_dir: "{{inventory_dir}}/extra_vars/usergroups"
 
 users_usergroups: []
 
-# If you have no admin rights on the remote machine and you only want to deploy
-# your dotfiles and/or your ssh keys, turn on this option. It will only touch
-# your account (i.e: deploy your ssh keys and sync your dotfiles)
-users_noadmin: no
-
 # Avoid trying to install packages. Useful if you know you don't have access to
 # repositories.
 users_nopkgs: no
-
-# Build and install tmux. Useful on CentOS hosts as Tmux EPEL packages is
-# oudated.
-users_build_tmux: no
 
 # Force expiration of new user's so they are prompted to change it on first
 # login.

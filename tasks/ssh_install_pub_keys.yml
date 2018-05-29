@@ -1,52 +1,91 @@
 ---
 
-- name: install {{unix_user['name']}} user 'domain' public ssh keys
+# Works only when fact "ansible_facts['domain']" is defined. Not always the
+# case in clouds vm instances.
+- name: install ssh "ansible_domain" public key
   authorized_key:
-    user: "{{unix_user['name']}}"
+    user: "{{user['name']}}"
     key: "{{lookup('file', item)}}"
     exclusive: "{{users_exclusive_ssh_keys}}"
   with_first_found:
     - files:
-        - "{{local_user}}.{{ansible_facts['domain']}}.pub"
-        - "{{local_user}}.pub"
+        - "{{cm_user}}.{{ansible_facts['domain']}}.pub"
       paths:
         - "{{groups_dir}}/{{usergroup['name']}}/keys"
-        - "{{unix_user['home']|default(users_defaults['home'])}}/{{local_user}}/.ssh"
+        - "{{user['home']|default(users_defaults['home'])}}/{{cm_user}}/.ssh"
       skip: true
   register: installed_domain_key
   when: ansible_facts['domain'] is defined
-  vars:
-    local_user: "{{a_local_user if users_noadmin else users_usermap.get(unix_user['name'], unix_user['name'])}}"
 
 # if user has an account on the cm an keys are not exclusive, try to find
 # id_rsa.pub key and install it.
-- name: install {{unix_user['name']}} user id_rsa.pub ssh keys (if found)
+- name: install ssh "id_rsa.pub" public key from github
   authorized_key:
-    user: "{{unix_user['name']}}"
+    user: "{{user['name']}}"
+    key: "https://github.com/{{cm_user}}.keys"
+    exclusive: "{{users_exclusive_ssh_keys}}"
+  when:
+    - (not installed_domain_key is changed and users_exclusive_ssh_keys) or not users_exclusive_ssh_keys
+  register: gh_ssh_key
+
+- debug: var=gh_ssh_key
+
+# if user has an account on the cm an keys are not exclusive, try to find
+# id_rsa.pub key and install it.
+- name: install ssh "id_rsa.pub" public key from CM
+  authorized_key:
+    user: "{{user['name']}}"
     key: "{{lookup('file', item)}}"
     exclusive: "{{users_exclusive_ssh_keys}}"
   with_first_found:
-    - files: "id_rsa.pub"
-      paths: "{{unix_user['home']|default(users_defaults['home'])}}/{{local_user}}/.ssh"
+    - files:
+        - "id_rsa.pub"
+      paths: "{{user['home']|default(users_defaults['home'])}}/{{cm_user}}/.ssh"
       skip: true
   when:
     - (not installed_domain_key is changed and users_exclusive_ssh_keys) or not users_exclusive_ssh_keys
-  vars:
-    local_user: "{{a_local_user if users_noadmin else users_usermap.get(unix_user['name'], unix_user['name'])}}"
+    - not gh_ssh_key['changed']
 
-- name: install {{unix_user['name']}} user list of authorized_keys
+# - debug: msg={{lookup('first_found', [item], key_dirs)}}
+#   loop: "{{user['authorized_keys']|default([])}}"
+#   when:
+#     - (not installed_domain_key is changed and users_exclusive_ssh_keys) or not users_exclusive_ssh_keys
+#   vars:
+#     key_dirs:
+#       - "/home/{{cm_user}}/.ssh"
+#       - "{{groups_dir}}/{{usergroup['name']|default('')}}/keys"
+#       - "{{groups_dir}}/keys"
+
+# - debug: msg={{lookup('first_found', [item], key_dirs)}}
+# - debug: var=item
+
+- name: install ssh "authorized_keys" public keys
   authorized_key:
-    user: "{{unix_user['name']}}"
-    key: "{{lookup('file', keypath.strip())}}"
-  loop: "{{unix_user['authorized_keys']}}"
+    user: "{{user['name']}}"
+    key: "{{lookup('file', lookup('first_found', [item], key_dirs))}}"
+  loop: "{{user['authorized_keys']|default([])}}"
   when:
-    - item is defined
     - (not installed_domain_key is changed and users_exclusive_ssh_keys) or not users_exclusive_ssh_keys
   vars:
-    key_dir: "{{groups_dir}}/{{usergroup['name']}}/keys"
-    keypath: >-
-      {%- if ((groups_dir ~ '/' ~ usergroup['name'] ~ '/keys/' ~ item)|exists) %}
-      {{groups_dir}}/{{usergroup['name']}}/keys/{{item}}
-      {% else %}
-      {{groups_dir}}/keys/{{item}}
-      {% endif -%}
+    key_dirs:
+      - "/home/{{cm_user}}/.ssh"
+      - "{{groups_dir}}/{{usergroup['name']|default('')}}/keys"
+      - "{{groups_dir}}/keys"
+
+# - name: install ssh "authorized_keys" public keys
+
+#   authorized_key:
+#     user: "{{item['name']}}"
+#     key: "{{lookup('file', keypath.strip())}}"
+#   loop: "{{user['authorized_keys']|default([])}}"
+#   when:
+#     - (not installed_domain_key is changed and users_exclusive_ssh_keys) or not users_exclusive_ssh_keys
+#   vars:
+#     keypath: >-
+#       {%- if ((groups_dir ~ '/' ~ usergroup['name'] ~ '/keys/' ~ item) is exists) %}
+#       {{groups_dir}}/{{usergroup['name']}}/keys/{{item}}
+#       {% elif {{groups_dir}}/keys/{{item}}%}
+#       {{groups_dir}}/keys/{{item}}
+#       {% else %}
+#       /home/{{a_cm_user}}/.ssh/{{item}}
+#       {% endif -%}

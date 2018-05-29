@@ -1,0 +1,49 @@
+---
+
+#############################
+# dotfiles
+#############################
+
+- set_fact:
+    # user invoking ansible on the control machine
+    a_cm_user: "{{lookup('env', 'USER')}}"
+  check_mode: True
+  when: a_cm_user is not defined
+  tags: always
+
+- name: configure unix account
+  block:
+    # configure your user
+    - name: gather ansible_env facts
+      setup: gather_subset=!all
+
+    - set_fact:
+        users:
+          # this is set to remote_user (not affected by --user)
+          # NOTE: requires fact gathering
+          - name: "{{ansible_facts['env']['USER']}}"
+            # shell: "/bin/zsh"
+            dotfiles_dir: "dotfiles"
+            vim_dir: ".vim"
+      check_mode: True
+
+  when:
+    - users is not defined
+    - ansible_connection != 'local'
+
+# Try installnig 'ansible_domain' and 'id_rsa.pub' pub keys searching paths
+# using 'first_found' lookups.
+- include_tasks: ssh_install_pub_keys.yml
+  when: ansible_connection != 'local'
+  loop: "{{users}}"
+  loop_control:
+    loop_var: user
+  vars:
+    cm_user: "{{(ansible_facts['env']['USER'] == 'root') |ternary(a_cm_user, users_usermap.get(user['name'], user['name']))}}"
+    # cm_user: "{{users_usermap.get(user['name'], user['name'])}}"
+    # key_dir: "{{groups_dir}}/{{usergroup['name']}}/keys"
+
+# ssh_config templating
+# - include_tasks: ssh_config.yml
+
+- include_tasks: account_dotfiles.yml

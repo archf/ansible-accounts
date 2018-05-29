@@ -1,55 +1,21 @@
 ---
 
 - set_fact:
+    # list of user accounts found on control machine
     a_control_machine_users: "{{lookup('pipe', 'lslogins --noheadings --raw | awk ' + '{if ($1 >= 1000 && $1 < 65534) print $2}'|quote).split('\n')}}"
-    a_local_user: "{{lookup('env', 'USER')}}"
+    # user invoking ansible on control machine
+    a_cm_user: "{{lookup('env', 'USER')}}"
   check_mode: True
   tags: always
 
-  #######################################
-  # noadmin mode
-  #######################################
-- name: configure existing account (users_nodadmin=True)
-  block:
-
-    # configure your user
-    - name: gather ansible_env facts
-      setup: gather_subset=!all
-    - set_fact:
-        users:
-          # this is set to remote user (not affected by --user)
-          # NOTE: requires fact gathering
-          - name: "{{ansible_facts['env']['USER']}}"
-            # shell: "/bin/zsh"
-            dotfiles_dir: "dotfiles"
-            vim_dir: ".vim"
-      check_mode: True
-
-    - include_tasks: ssh_install_pub_keys.yml
-      when: ansible_connection != 'local'
-      loop: "{{users}}"
-      loop_control:
-        loop_var: unix_user
-      vars:
-        usergroup: ""
-
-    # - include_tasks: ssh_config.yml
-
-    - import_tasks: dotfiles.yml
-      when:
-        - users_noadmin
-        - ansible_connection != 'local'
-
-  when: users_noadmin
-
-  #########################################
-  # installing users basic pkgs
-  #########################################
+#########################################
+# installing users basic pkgs
+#########################################
 - name: install users basic packages (default mode; users_nopkgs=False)
   block:
   #  When repos' fqdn are returning AAAA records and there are no IPV6
   #  connectivity, pycurl doesn't fallback on ipv4. Not tested when IPV6INIT=no.
-  - name: force yum on RedHat <7 and derivatives to use ipv4
+  - name: force yum on RedHat <7 and derivatives to use ipv4 (set ip_resolve=4)
     lineinfile:
       line: "ip_resolve=4"
       insertafter: "^gpgcheck*"
@@ -70,8 +36,6 @@
         - rsync
         - make
         - xsel
-        # identical packaeg name on both RedHat and Debian
-        # - rxvt-unicode-256color
 
   - name: install vim and X11 xauth on RedHat derivatives
     package: name={{item}} state=latest
@@ -89,42 +53,27 @@
        - ansible_facts['os_family'] == "Debian"
 
   when:
-    - not users_noadmin
     - not users_nopkgs
   tags: pkgs
 
-  #########################################
-  # adding users by groups (default mode)
-  #########################################
+#########################################
+# adding users by groups (default mode)
+#########################################
 - name: add users by unix group (default mode; users_noadmin=False)
   block:
-  - name: gather a_usergroups facts
-    usergroups:
+    - name: gather a_usergroups facts
+      usergroups:
+      # add unix group for usergroup
+      # manage users for each usersgroups
+    - include_tasks: groupadd.yml
+      loop: "{{usergroups}}"
+      loop_control:
+        loop_var: usergroup
+  tags: groupadd
 
-    # add unix group for usergroup
-    # manage users for each usersgroups
-  - include_tasks: groupadd.yml
-    loop: "{{usergroups}}"
-    loop_control:
-      loop_var: usergroup
-    tags:
-      - accounts
-
-  - debug: msg="Unix group '{{usergroup['key']}}' will be removed"
-    with_dict: "{{ansible_facts['a_usergroups']|default({})}}"
-    when:
-      - usergroups is defined
-      - groupdel_debug and usergroup.key not in users_exclusive_usergroups_exceptions
-      - a_usergroup.key not in usergroups|map(attribute='name')|list
-    loop_control:
-      loop_var: usergroup
-
-  when: not users_noadmin
-  tags: useradd
-
-  ###############################################################
-  # removing users by groups (when users_exclusive_groupmembers)
-  ###############################################################
+###############################################################
+# removing users by groups (when users_exclusive_groupmembers)
+###############################################################
 - name: removing users by groups
   block:
 
@@ -152,5 +101,5 @@
       with_dict: "{{ansible_usergroups|default({})}}"
       when: item.key not in users_exclusive_usergroups_exceptions
 
-  when: not users_noadmin and users_exclusive_usergroups
-  tags: userdel
+  when: users_exclusive_usergroups
+  tags: groupdel
