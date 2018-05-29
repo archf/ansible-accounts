@@ -19,19 +19,6 @@
 
 # if user has an account on the cm an keys are not exclusive, try to find
 # id_rsa.pub key and install it.
-- name: install ssh "id_rsa.pub" public key from github
-  authorized_key:
-    user: "{{user['name']}}"
-    key: "https://github.com/{{cm_user}}.keys"
-    exclusive: "{{users_exclusive_ssh_keys}}"
-  when:
-    - (not installed_domain_key is changed and users_exclusive_ssh_keys) or not users_exclusive_ssh_keys
-  register: gh_ssh_key
-
-- debug: var=gh_ssh_key
-
-# if user has an account on the cm an keys are not exclusive, try to find
-# id_rsa.pub key and install it.
 - name: install ssh "id_rsa.pub" public key from CM
   authorized_key:
     user: "{{user['name']}}"
@@ -44,7 +31,15 @@
       skip: true
   when:
     - (not installed_domain_key is changed and users_exclusive_ssh_keys) or not users_exclusive_ssh_keys
-    - not gh_ssh_key['changed']
+
+# - name: install ssh "id_rsa.pub" public key from github
+#   authorized_key:
+#     user: "{{user['name']}}"
+#     key: "https://github.com/{{cm_user}}.keys"
+#     exclusive: "{{users_exclusive_ssh_keys}}"
+#     comment: "{{user['gh_ssh_key_comment']|default(omit)}}"
+#   when:
+#     - (not installed_domain_key is changed and users_exclusive_ssh_keys) or not users_exclusive_ssh_keys
 
 # - debug: msg={{lookup('first_found', [item], key_dirs)}}
 #   loop: "{{user['authorized_keys']|default([])}}"
@@ -59,20 +54,19 @@
 # - debug: msg={{lookup('first_found', [item], key_dirs)}}
 # - debug: var=item
 
-- name: install ssh "authorized_keys" public keys
-  authorized_key:
-    user: "{{user['name']}}"
-    key: "{{lookup('file', lookup('first_found', [item], key_dirs))}}"
-  loop: "{{user['authorized_keys']|default([])}}"
-  when:
-    - (not installed_domain_key is changed and users_exclusive_ssh_keys) or not users_exclusive_ssh_keys
-  vars:
-    key_dirs:
-      - "/home/{{cm_user}}/.ssh"
-      - "{{groups_dir}}/{{usergroup['name']|default('')}}/keys"
-      - "{{groups_dir}}/keys"
-
-# - name: install ssh "authorized_keys" public keys
+# this is the correct one
+# - name: install user defined ssh "authorized_keys" public keys
+#   authorized_key:
+#     user: "{{user['name']}}"
+#     key: "{{lookup('file', lookup('first_found', [item], key_dirs, 'skip=True'))}}"
+#   loop: "{{user['authorized_keys']|default([])}}"
+#   when:
+#     - (not installed_domain_key is changed and users_exclusive_ssh_keys) or not users_exclusive_ssh_keys
+#   vars:
+#     key_dirs:
+#       - "/home/{{cm_user}}/.ssh"
+#       - "{{groups_dir}}/{{usergroup['name']}}/keys"
+#       - "{{groups_dir}}/keys"
 
 #   authorized_key:
 #     user: "{{item['name']}}"

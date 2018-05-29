@@ -3,24 +3,31 @@
 # Complete users list may come either:
 #   - from ansible inventory
 #   - for outside ansible inventory (users.yml) Useful for handling serveral
-  #   usergroups with each their own file.
-- name: set users var
-  block:
-  - name: set users var from users.yml - "{{usergroup['name']}}"
-    include_vars: "{{users_file}}"
-    when:
-      - "'users' not in usergroup.keys()|list"
-      - users_file is exists
-
-  - name: set users vars from inventory - "{{usergroup['name']}}"
-    set_fact:
-      users: "{{usergroup['users']}}"
-    when: not (users_file is exists)
-
+#   usergroups with each their own file.
+- name: set "users" var from "users.yml" - "{{usergroup['name']}}"
+  include_vars: "{{users_file}}"
+  when:
+    - "'users' not in usergroup.keys()|list"
+    # - users_file is exists
   check_mode: True
   tags: always
-  vars:
-    users_file: "{{groups_dir}}/{{usergroup['name']}}/users.yml"
+  # vars:
+  #   users_file: "{{groups_dir}}/{{usergroup['name']}}/users.yml"
+
+- name: set users vars from inventory
+  set_fact:
+    users: "{{usergroup['users']}}"
+  when:
+    - usergroup is defined
+    # - users is not defined
+    - "'users' in usergroup.keys()|list"
+    # - not (users_file is exists)
+  check_mode: True
+  tags: always
+
+  # # vars:
+  # #   users_file: "{{groups_dir}}/{{usergroup['name']}}/users.yml"
+# - include_tasks: set_users_var_from_inventory.yml
 
 # useful when you do not have control over '/etc/skel' template.
 - name: scaffold '/etc/skel'
