@@ -8,50 +8,65 @@
   when: a_cm_user is not defined
   tags: always
 
-- name: set 'users' var
-  block:
-    # configure your user
-    - name: gather 'ansible_env' facts
-      setup: gather_subset=!all
+# Using inventory defined input thus allowing inventory specific.
+#   3 senarios are possible:
+#     1. usergroups is defined and usergroup is defined -> running with
+#       role main.yml as entrypoint
+#     2. usergroups is defined and usergroup is undefined -> running with
+#       role account.yml as entrypoint.
+#     3. usergroups is undefined -> running with no inventory config
+#       meaning we only configure current ansible remote_user account.
 
-    - name: set 'users' from 'usergroup' - running from "accounts.yml" entrypoint
+- name: gather "ansible_facts['env']" facts
+  setup: gather_subset=!all
+  when:
+    # - usergroup is not defined
+    - ansible_facts['env'] is not defined
+  check_mode: True
+  tags: always
+
+- name: set 'users' var - inventory defined usergroups
+  block:
+    - name: set 'users' from 'usergroup' - running with "main.yml" as entrypoint
       set_fact:
-        users: "{{usergroup['users']|selectattr('name', 'eq', ansible_facts['env']['USER'])|list}}"
+        users: "{{usergroup['users']}}"
+        # users: "{{usergroup['users']|selectattr('name', 'eq', ansible_facts['env']['USER'])|list}}"
       when:
         - usergroup is defined
 
-    # fixme: set users searching recursively in usergroups
-    - name: set 'users' from first 'usergroups' - running from 'account.yml' entrypoint
+    # todo: set users searching recursively in usergroups
+    - name: set 'users' from first 'usergroups' - running with 'account.yml' as entrypoint
       set_fact:
         users: "{{usergroups[0]['users']|selectattr('name', 'eq', ansible_facts['env']['USER'])|list}}"
         usergroup:
           name: "{{usergroups[0]['name']}}"
       when:
-        - usergroups is defined
-        - usergroup is not defined
-
-    - name: set 'users' (fallback) - running from 'account.yml' entrypoint
-      set_fact:
-        users:
-          # this is set to remote_user (not affected by --user)
-          # NOTE: requires fact gathering
-          - name: "{{ansible_facts['env']['USER']}}"
-            dotfiles_dir: "dotfiles"
-            vim_dir: ".vim"
-        usergroup:
-            name: "{{ansible['facts['env']['USER']}}"
-
+      - usergroup is not defined
   when:
-    - users is not defined
-    # - ansible_connection != 'local'
+    - usergroups is defined
   check_mode: True
   tags: always
 
-- debug: var=hostvars
-# - debug: var=users
+# configuring current user only
+- name: set 'users' (fallback method) - running from 'account.yml' entrypoint
+  set_fact:
+    users:
+      # This is set to remote_user (not affected by --user) Requires fact gathering.
+      - name: "{{ansible_facts['env']['USER']}}"
+        dotfiles_dir: "dotfiles"
+        vim_dir: ".vim"
+        # Required by several tasks. Defaults to 'USER' env variable.
+        # fixme: detect the real user gid
+    usergroup:
+        name: "{{ansible_facts['env']['USER']}}"
+  when:
+    - usergroups is not defined
+  check_mode: True
+  tags: always
+
 # - debug: var=usergroups
 # - debug: var=usergroup
-- fail:
+# - debug: var=users
 
 # Try installing 'ansible_domain' and 'id_rsa.pub' pub keys searching paths
 # using 'first_found' lookups.

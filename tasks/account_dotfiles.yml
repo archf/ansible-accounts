@@ -47,7 +47,7 @@
 
 # - debug: var=ansible_facts['env']['HOME']
 
-- name: exec users makefile
+- name: execute users's Makefile if exist in dotfiles
   make:
     chdir: "{{ansible_facts['env']['HOME']}}/{{item['dotfiles_dir']}}"
     target: "{{users_dotfiles_makefile_target|default(omit)}}"
@@ -55,12 +55,12 @@
   loop: "{{users}}"
   when:
     - item['dotfiles_dir'] is defined
+    # - "item['dotfiles_dir']/Makefile is file"
     # disable cond while https://github.com/ansible/ansible/issues/30351
     # - makefile_dir is file
     # - "ansible_facts['env']['HOME']/item['dotfiles_dir']" is file
     # - item['name'] == ansible_facts['env']['USER']
 
   ignore_errors: true
-
   # vars:
   #     makefile_dir: "{{ansible_facts['env']['HOME']}}/{{item['dotfiles_dir']}}/Makefile"

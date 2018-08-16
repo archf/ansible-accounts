@@ -1,5 +1,13 @@
 ---
 
+- name: create directories for keyrings in '{{groups_dir}}/{{usergroup['name']}}
+  file:
+    path: "{{groups_dir}}/{{usergroup['name']}}/old_keys"
+    state: directory
+  become: no
+  delegate_to: localhost
+  run_once: yes
+
 ################################
 # removal of unmanaged ssh keys
 ################################
