@@ -149,7 +149,7 @@ users_usermap: {}
 # By default, the first make target is ran but you way want to override. Could
 # be useful to if hosts have no www access. This is fed to the make module
 # target argument.
-# users_dotfiles_makefile_target: ''
+# users_dotfiles_makefile_target:
 
 # Include debugging tasks that prints variable information when adding and
 # removing unix groups.

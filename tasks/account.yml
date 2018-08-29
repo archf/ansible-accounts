@@ -48,12 +48,11 @@
   tags: always
 
 # configuring current user only
-- name: set 'users' (fallback method) - running from 'account.yml' entrypoint
+- name: set 'users' (fallback method) - running from 'account.yml' as entrypoint
   set_fact:
     users:
       # This is set to remote_user (not affected by --user) Requires fact gathering.
       - name: "{{ansible_facts['env']['USER']}}"
-        dotfiles_dir: "dotfiles"
         vim_dir: ".vim"
         # Required by several tasks. Defaults to 'USER' env variable.
         # fixme: detect the real user gid
