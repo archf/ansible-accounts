@@ -17,6 +17,9 @@
 #     3. usergroups is undefined -> running with no inventory config
 #       meaning we only configure current ansible remote_user account.
 
+# - debug: var=usergroups
+# - debug: var=usergroup
+
 - name: gather "ansible_facts['env']" facts
   setup: gather_subset=!all
   when:
@@ -37,11 +40,12 @@
     # todo: set users searching recursively in usergroups
     - name: set 'users' from first 'usergroups' - running with 'account.yml' as entrypoint
       set_fact:
-        users: "{{usergroups[0]['users']|selectattr('name', 'eq', ansible_facts['env']['USER'])|list}}"
+        users: "{{usergroups[0]['users']}}"
+        # users: "{{usergroups[0]['users']|selectattr('name', 'eq', ansible_facts['env']['USER'])|list}}"
         usergroup:
           name: "{{usergroups[0]['name']}}"
       when:
-      - usergroup is not defined
+        - usergroup is not defined
   when:
     - usergroups is defined
   check_mode: True
@@ -63,6 +67,8 @@
   check_mode: True
   tags: always
 
+# - debug: var=ansible_facts['env']['USER']
+# - debug: var=ansible_facts
 # - debug: var=usergroups
 # - debug: var=usergroup
 # - debug: var=users
