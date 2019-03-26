@@ -35,7 +35,8 @@
         - sudo
         - rsync
         - make
-        - xsel
+        # part of epel
+        # - xsel
 
   - name: install vim and X11 xauth on RedHat derivatives
     package: name={{item}} state=latest

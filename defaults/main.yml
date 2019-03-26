@@ -10,6 +10,9 @@ users_usergroups: []
 # repositories.
 users_nopkgs: no
 
+# Ignore erros when using users modules on LDAP controlled server.
+users_usermod_ignore_errors: false
+
 # Force expiration of new user's so they are prompted to change it on first
 # login.
 users_expire_passwords: no

@@ -102,6 +102,7 @@
     generate_ssh_key: "{{users_generate_ssh_keys}}"
   loop: "{{users}}"
   register: new_users
+  ignore_errors: "{{users_usermod_ignore_errors}}"
   tags:
     - skel
 
