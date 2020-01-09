@@ -178,8 +178,7 @@
 
     # fetch missing pub keys again prior to propagation of public keys
   - include_tasks: ssh_fetch_keys.yml
-    static: no
-    when: users_generate_ssh_keys and generate_new_ssh_keys|changed
+    when: users_generate_ssh_keys and generate_new_ssh_keys is changed
 
   tags: ssh-private-keys
 
