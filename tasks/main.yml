@@ -62,10 +62,13 @@
 #########################################
 - name: add users by unix group (default mode; users_noadmin=False)
   block:
-    - name: gather a_usergroups facts
+    - name: gather 'a_usergroups' custom fact (current usergroups)
       usergroups:
-      # add unix group for usergroup
-      # manage users for each usersgroups
+
+    - debug: var=usergroups
+      when: groupadd_debug
+
+    # add unix group for usergroup and manage users for each usersgroups
     - include_tasks: groupadd.yml
       loop: "{{usergroups}}"
       loop_control:
