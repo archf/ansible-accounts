@@ -73,9 +73,7 @@
 # - debug: var=usergroup
 # - debug: var=users
 
-# Try installing 'ansible_domain' and 'id_rsa.pub' pub keys searching paths
-# using 'first_found' lookups.
-- include_tasks: ssh_install_pub_keys.yml
+- include_tasks: ssh_authorized_keys.yml
   when: ansible_connection != 'local'
   loop: "{{users}}"
   loop_control:

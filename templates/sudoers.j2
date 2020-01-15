@@ -1,7 +1,9 @@
-{# sudoers file for a unix group #}
-{% if usergroup.nopasswd is defined %}
-{{'%'}}{{usergroup.name}} ALL=(ALL) NOPASSWD: {{usergroup.nopasswd}}
-{% elif usergroup.sudoers is defined and usergroup.sudoers %}
-{{'%'}}{{usergroup.name}} ALL=(ALL) ALL
-{% endif %}
+{#
+sudoers file for a unix group or a user
+  sudoers_rule_list: a list of sudoers rule_string
+  sudoers_user_alias: the sudoers user_alias to which the rules appy
+#}
+{% for rule_string in sudoers_rule_list %}
+{{ sudoers_user_alias ~ ' ' ~ rule_string }}
+{%endfor%}
 {# Defaults:%{{usergroup.name}} !requiretty #}

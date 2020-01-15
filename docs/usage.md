@@ -58,10 +58,9 @@ usergroups:
   - name: vendorgroup
     # gid is optional
     gid: 1001
-    # create vendorgroup file inside /etc/sudoers.d
-    sudoers: yes
-    # nopasswd is optional
-    nopasswd: ALL
+    # create vendorgroup sudoers file inside /etc/sudoers.d
+    sudos:
+      - ALL=(ALL) ALL
 
   - name: customergroup
 ```

@@ -1,8 +1,10 @@
 ---
 
+# Try installing 'ansible_domain' and 'id_rsa.pub' pub keys searching paths
+# using 'first_found' lookups.
 # Works only when fact "ansible_facts['domain']" is defined. Not always the
 # case in clouds vm instances.
-- name: install ssh "ansible_domain" public key
+- name: install user ssh public key matching "<cm_user.<ansible_domain>" if exists on control machine
   authorized_key:
     user: "{{user['name']}}"
     key: "{{lookup('file', item)}}"
@@ -19,7 +21,7 @@
 
   # if the user has an account on the cm AND keys are not exclusive, install
   # ~/.ssh/id_rsa.pub if it does exist
-- name: install ssh "id_rsa.pub" if exist on control machine
+- name: install user ssh public key "id_rsa.pub" if exist on control machine
   authorized_key:
       user: "{{user['name']}}"
       key: "{{lookup('file', item)}}"
@@ -55,11 +57,11 @@
 #         - "{{groups_dir}}/keys"
 #       skip: true
 
-- name: install user defined ssh "authorized_keys" public keys
+- name: install user's "ssh_authorized_keys" to authorized_keys file
   authorized_key:
     user: "{{user['name']}}"
     key: "{{lookup('file', lookup('first_found', params))}}"
-  loop: "{{user['authorized_keys']|default([])}}"
+  loop: "{{user['ssh_authorized_keys']|default([])}}"
   when:
     - (not installed_domain_key is changed and users_exclusive_ssh_keys) or not users_exclusive_ssh_keys
   vars:

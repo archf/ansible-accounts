@@ -3,6 +3,8 @@
 - name: set '{{usergroup['name']}}' 'new_ssh_keys' lists w/o expired keys
   set_fact:
     new_ssh_keys: "{{managed_ssh_keys|difference(active_ssh_keys)|split_keynames}}"
+  check_mode: True
+  tags: always
 
 ################################
 # generate new ssh keys

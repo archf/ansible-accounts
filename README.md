@@ -6,7 +6,7 @@ A role to create and configure user accounts and groups on a host.
 
 ### Ansible version
 
-Minimum required ansible version is 2.3.
+Minimum required ansible version is 2.5.
 
 ### Ansible role dependencies
 
@@ -54,7 +54,8 @@ Basic usage is:
 ```
 ## User guide
 
-### requirements:
+### Requirements
+
   This roles contains tasks relying on the `synchronize` module (rsync) and
   therefore it requires the `openssh` daemon to be running.
 
@@ -70,13 +71,13 @@ login on the same servers, user accounts are configured by adding one or
 multiple usergroups composed of one or more individual users that will end up
 attached to the unix group named after the usergroup name. Phew!
 
-There is also 'noadmin' mode for when you have no control over the remote
+There is also `noadmin` mode for when you have no control over the remote
 machine. You can use this on the restricted machines to deploy your public
 ssh keys and your dotfiles. You will be touching **only your account**
 
 **SSH keys management**
 
-Private ssh keys are **only managed on workstations**. Agent-fowarding should be
+Private ssh keys are **only managed on specified hosts**. Agent-fowarding should be
 considered when using a `jumphost` or hopping through a bastion host. To make
 things manageable and flexible, following logic is used to allow a user to
 have have multiple ssh keys.
@@ -92,7 +93,7 @@ such, this is the role behavior regarding your keyring management.
   * default keys are deployed as <user>.<domain> and <user>.<domain>.pub on workstations
   * public keys will be deployed exclusively on target where ansible_fqdn == <user>.<domain>
   * ssh keys can be rotated, this behavior is disabled by default
-  * keypairs are created on workstations at user account creations
+  * keypairs are created on specified hosts at user account creations
   * all public keys of configured keypairs are fetched back to usergroup keyring
   * private keys are never fetched to the usergroup keyring
   * other keys can be requested to be generated at user account creation
@@ -111,10 +112,9 @@ usergroups:
   - name: vendorgroup
     # gid is optional
     gid: 1001
-    # create vendorgroup file inside /etc/sudoers.d
-    sudoers: yes
-    # nopasswd is optional
-    nopasswd: ALL
+    # create vendorgroup sudoers file inside /etc/sudoers.d
+    sudos:
+      - ALL=(ALL) ALL
 
   - name: customergroup
 ```
@@ -271,14 +271,16 @@ Role default variables from `defaults/main.yml`.
 ```yaml
 # An external directory containing sensitive data (group profiles, public ssh
 # keys, users's ssh_config, ...etc.
-groups_dir: "{{inventory_dir}}/private/groups"
+groups_dir: "{{inventory_dir}}/extra_vars/usergroups"
 
 users_usergroups: []
 
-# If you have no admin rights on the remote machine and you only want to deploy
-# your dotfiles and/or your ssh keys, turn on this option. It will only touch
-# your account (i.e: deploy your ssh keys and sync your dotfiles)
-users_noadmin: no
+# Avoid trying to install packages. Useful if you know you don't have access to
+# repositories.
+users_nopkgs: no
+
+# Ignore erros when using users modules on LDAP controlled server.
+users_usermod_ignore_errors: false
 
 # Force expiration of new user's so they are prompted to change it on first
 # login.
@@ -305,7 +307,7 @@ users_ssh_key_max_age: 60d
 # and this value. For public key to be propagated to the right machines, it
 # should match the 'ansible_domain' fact and thus hint wich realm the key gives
 # access to.
-users_default_domain: ""
+users_default_domain: null
 
 # Configure '/etc/skel' facility. Useful prior accounts creation. Doing it on
 # lot of user home directory after they created is costly. This will add
@@ -397,7 +399,6 @@ users_defaults:
     - win*
     - wireshark
     - _vimrc
-    - f-desktop.prf
 
     # directories for building tmux, vim, openssh from source
     - tmux/tmux-?.?
@@ -409,17 +410,18 @@ users_defaults:
 # with keys such as { '<remote_username>' : '<local userneame>'}.
 users_usermap: {}
 
-# You can have shared by multiple users. Define this variable in `users.yml`
-# to have usergroup defaults different than `users_defaults`.
-usergroup_defaults:
-  passwd: ''
+# Disabling this for now.
+# # You can have shared by multiple users. Define this variable in `users.yml`
+# # to have usergroup defaults different than `users_defaults`.
+# usergroup_defaults:
+#   passwd: ''
 
 ### omited parameters
 
 # By default, the first make target is ran but you way want to override. Could
 # be useful to if hosts have no www access. This is fed to the make module
 # target argument.
-# users_dotfiles_makefile_target: ''
+# users_dotfiles_makefile_target:
 
 # Include debugging tasks that prints variable information when adding and
 # removing unix groups.

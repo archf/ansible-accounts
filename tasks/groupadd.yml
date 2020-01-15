@@ -59,7 +59,11 @@
     group: root
     validate: "visudo -cf %s"
   become: yes
-  when: usergroup['sudoers'] is defined
+  when:
+    - usergroup['sudo'] is defined and not usergroup['sudo']
+  vars:
+    sudoers_rule_list: "{{usergroup['sudo']}}"
+    sudoers_user_alias: "%{{usergroup['name']}}"
 
 # todo: password and priv key management
 #   - name: generate a random password hash per managed user
