@@ -11,7 +11,7 @@
 #########################################
 # installing users basic pkgs
 #########################################
-- name: install users basic packages (default mode; users_nopkgs=False)
+- name: install users basic packages (default action; users_nopkgs=False)
   block:
   #  When repos' fqdn are returning AAAA records and there are no IPV6
   #  connectivity, pycurl doesn't fallback on ipv4. Not tested when IPV6INIT=no.
@@ -58,7 +58,7 @@
   tags: pkgs
 
 #########################################
-# adding users by groups (default mode)
+# adding users by groups (default action)
 #########################################
 - name: add users by unix group (default mode; users_noadmin=False)
   block:

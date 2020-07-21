@@ -2,14 +2,6 @@
 
 # user public ssh keys fetching
 
-- name: create directories for keyrings in '{{groups_dir}}/{{usergroup['name']}}
-  file:
-    path: "{{groups_dir}}/{{usergroup['name']}}/keys"
-    state: directory
-  become: no
-  delegate_to: localhost
-  run_once: yes
-
 - name: fetch {{ansible_domain}} public ssh keys back to control machine
   fetch:
     src: "{{item.home|default(users_defaults.home)}}/{{item.name}}/.ssh/{{item.name}}.{{ansible_domain}}.pub"

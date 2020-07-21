@@ -3,8 +3,8 @@
 # useful fallback when ansible_connection != ssh => (can't use rsync//synchronize)
 - name: copy dotfiles to target host user account
   copy:
-    src: "{{item['home']|default(users_defaults['home'])}}/{{cm_user}}/{{item['dotfiles_dir']}}"
-    dest: "{{item['home']|default(users_defaults['home'])}}/{{item['name']}}/"
+    src: "{{item['homedir']|default(users_defaults['homedir_root'] ~ '/' ~ cm_user)}}/{{item['dotfiles_dir']}}"
+    dest: "{{item['homedir']|default(users_defaults['homedir_root'] ~ '/' ~ item['name'])}}/"
     owner: "{{item['name']}}"
     group: "{{usergroup['name']}}"
   loop: "{{users|selectattr('dotfiles_dir','defined')|list}}"
@@ -15,8 +15,8 @@
 
 - name: copy .vim directory to target host user account
   copy:
-    src: "{{item['home']|default(users_defaults['home'])}}/{{cm_user}}/{{item['vim_dir']}}"
-    dest: "{{item['home']|default(users_defaults['home'])}}/{{item['name']}}/"
+    src: "{{item['homedir']|default(users_defaults['homedir_root'] ~ '/' ~ cm_user)}}/{{item['vim_dir']}}"
+    dest: "{{item['homedir']|default(users_defaults['homedir_root'] ~ '/' ~ item['name'])}}/"
     owner: "{{item['name']}}"
     group: "{{usergroup['name']}}"
   loop: "{{users|selectattr('vim_dir','defined')|list}}"

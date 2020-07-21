@@ -28,8 +28,8 @@
 - name: rsync dotfiles to target host user account
   synchronize:
     delete: yes
-    src: "{{item['home']|default(users_defaults['home'])}}/{{cm_user}}/{{item['dotfiles_dir']}}"
-    dest: "{{item['home']|default(users_defaults['home'])}}/{{item['name']}}"
+    src: "{{item['homedir']|default(users_defaults['homedir_root'] ~ '/' ~ cm_user)}}/{{item['dotfiles_dir']}}"
+    dest: "{{item['homedir']|default(users_defaults['homedir_root'] ~ '/' ~ item['name'])}}"
     rsync_opts:
       - "--exclude={{'{' ~ users_dotfiles_rsync_exclude|default(users_defaults['dotfiles_rsync_exclude'])|join(',') ~ '}' | replace(',', item['dotfiles_dir'] ~ '/,')}}"
       - "--delete-excluded"
@@ -51,8 +51,8 @@
 - name: rsync .vim directory to target host user account
   synchronize:
     delete: yes
-    src: "{{item['home']|default(users_defaults['home'])}}/{{cm_user}}/{{item['vim_dir']}}"
-    dest: "{{item['home']|default(users_defaults['home'])}}/{{item['name']}}"
+    src: "{{item['homedir']|default(users_defaults['homedir_root'] ~ '/' ~ cm_user)}}/{{item['vim_dir']}}"
+    dest: "{{item['homedir']|default(users_defaults['homedir_root'] ~ '/' ~ item['name'])}}"
   become: no
   loop: "{{users|selectattr('vim_dir','defined')|list}}"
   when:

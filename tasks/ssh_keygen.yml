@@ -1,8 +1,8 @@
 ---
 
-- name: set '{{usergroup['name']}}' 'new_ssh_keys' lists w/o expired keys
+- name: set '{{usergroup['name']}}' 'ssh_new_keys' fact (w/o expired keys)
   set_fact:
-    new_ssh_keys: "{{managed_ssh_keys|difference(active_ssh_keys)|split_keynames}}"
+    ssh_new_keys: "{{ssh_managed_keys|difference(ssh_active_keys)|split_keynames}}"
   check_mode: True
   tags: always
 
@@ -16,17 +16,16 @@
 # registered expired key *after* deletion of unmanaged keypairs. We are now
 # sure to not recreate an expired keys that became also unmanaged.
 
-# If examining lists content on check run '-C' will be slightly
-# wrong.
+# note: registered content on a check run '-C|--check' will be slightly wrong.
 
 # ssh-keygen reminder:
 #    -N new_passphrase
 #    -q quiet
 #    -f filename
 
-  # fixme: warning when undefined new_ssh_keys
+  # FIXME: warning when undefined 'ssh_new_keys'
 - name: generate new ssh keys
   command: ssh-keygen -q -N 'changeme' -f ~/.ssh/{{item.0.user}}.{{item.1}}
   become_user: "{{item.0.user}}"
-  loop: lookup('subelements',  new_ssh_keys, ssh_domains)
-  register: generate_new_ssh_keys
+  loop: lookup('subelements',  ssh_new_keys, ssh_domains)
+  register: ssh_generated_keys

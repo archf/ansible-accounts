@@ -269,6 +269,9 @@ on how runtime context may affects role execution.
 Role default variables from `defaults/main.yml`.
 
 ```yaml
+# Debug output.
+debug: false
+
 # An external directory containing sensitive data (group profiles, public ssh
 # keys, users's ssh_config, ...etc.
 groups_dir: "{{inventory_dir}}/extra_vars/usergroups"
@@ -339,7 +342,7 @@ users_exclusive_groupmembers: no
 # inside the 'users.yml' file of the usergroup.
 users_defaults:
   state: present
-  # fixme: task should generate something random per user, register it, and send to user by mail.
+  # FIXME: task should generate something random per user, register it, and send to user by mail.
   shell: "/bin/bash"
   system: no
 
@@ -350,10 +353,10 @@ users_defaults:
   # set to 'always'.
   update_password: 'on_create'
 
-  # This 'home' variable is the path prefix to the directory that will contain
-  # a user account. If you work on Solaris you could set this to
-  # '/export/home'.
-  home: '/home'
+  # Path prefix to the directory that will contain a user account. If you work
+  # on Solaris you could set this to '/export/home'. Not to be confused with
+  # 'homedir'
+  homedir_root: '/home'
 
   # Module defaults
   createhome: yes     # Defaults to yes

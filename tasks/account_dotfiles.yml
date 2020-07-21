@@ -45,19 +45,14 @@
     - ansible_connection is defined
     - ansible_connection == "lxd"
 
-- name: try execute a users's Makefile in dotfiles_dir
+- name: try execute a users's Makefile found in dotfiles_dir
   make:
-    chdir: "{{dotfiles_dir}}"
-    target: "{{users_dotfiles_makefile_target|default(omit)}}"
-  become_user: "{{item['name']}}"
-  loop: "{{users}}"
-  # when:
-    # this is evaluated before expanding vars
-    # - makefile_path is file
-    # - "{{item['home']|default(users_defaults['home']) ~ '/' ~ item['name'] ~ '/' ~ dotfiles ~ '/' ~ 'Makefile'}}" is file
-    # - "{{item['home']|default(users_defaults['home'])}}/{{item['name']}}/dotfiles/Makefile" is file
-    # - {{item['home']|default(users_defaults['home']) ~ '/' ~ item['name'] ~ '/' ~ dotfiles ~ '/' ~ 'Makefile'}} is file
-  ignore_errors: true
+    chdir: "{{makefile_path|dirname}}"
+    target: "{{item[1]|default(omit)}}"
+  become_user: "{{item[0]['name']}}"
+  loop: "{{users|subelements('dotfiles_makefile_targets',{'skip_missing': True})}}"
+  # loop: "{{lookup('nested', users, dotfiles_makefiles_targets|default(['']))}}"
+  when:
+    - makefile_path is file
   vars:
-    dotfiles_dir: "{{item['home']|default(users_defaults['home'])}}/{{item['name']}}/dotfiles"
-    # makefile_path: "{{dotfiles_dir}}/Makefile"
+    makefile_path: "{{item[0]['homedir']|default(users_defaults['homedir_root'] ~ '/' ~ item[0]['name'])}}/{{item[0]['dotfiles_dir']}}/Makefile"

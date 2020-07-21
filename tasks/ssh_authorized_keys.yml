@@ -4,7 +4,7 @@
 # using 'first_found' lookups.
 # Works only when fact "ansible_facts['domain']" is defined. Not always the
 # case in clouds vm instances.
-- name: install user ssh public key matching "<cm_user.<ansible_domain>" if exists on control machine
+- name: install user ssh_authorized_keys matching "<cm_user.<ansible_domain>" if exists on control machine
   authorized_key:
     user: "{{user['name']}}"
     key: "{{lookup('file', item)}}"
@@ -13,8 +13,8 @@
     - files:
         - "{{cm_user}}.{{ansible_facts['domain']}}.pub"
       paths:
+        - "{{user['homedir']|default(users_defaults['homedir_root'] + '/' + cm_user)}}/.ssh"
         - "{{groups_dir}}/{{usergroup['name']}}/keys"
-        - "{{user['home']|default(users_defaults['home'])}}/{{cm_user}}/.ssh"
       skip: true
   register: installed_domain_key
   when: ansible_facts['domain'] is defined
@@ -29,11 +29,12 @@
   with_first_found:
     - files:
         - "id_rsa.pub"
-      paths: "{{user['home']|default(users_defaults['home'])}}/{{cm_user}}/.ssh"
+      paths: "{{user['homedir']|default(users_defaults['homedir_root'] + '/' + cm_user)}}/.ssh"
       skip: true
   when:
     - (not installed_domain_key is changed and users_exclusive_ssh_keys) or not users_exclusive_ssh_keys
 
+# TODO: define ssh_import_id to import ID from github
 # - name: install ssh "id_rsa.pub" public key from github
 #   authorized_key:
 #     user: "{{user['name']}}"
@@ -52,7 +53,7 @@
 #       files:
 #         - "{{item}}"
 #       paths:
-#         - "/home/{{cm_user}}/.ssh"
+#         - "/homedir/{{cm_user}}/.ssh"
 #         - "{{groups_dir}}/{{usergroup['name']}}/keys"
 #         - "{{groups_dir}}/keys"
 #       skip: true
@@ -69,7 +70,7 @@
       files:
         - "{{item}}"
       paths:
-        - "/home/{{cm_user}}/.ssh"
+        - "{{user['homedir']|default(users_defaults['homedir_root'] + '/' + cm_user)}}/.ssh"
         - "{{groups_dir}}/{{usergroup['name']}}/keys"
         - "{{groups_dir}}/keys"
       skip: true

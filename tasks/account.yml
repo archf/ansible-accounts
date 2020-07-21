@@ -1,5 +1,17 @@
 ---
 
+# Using inventory defined input 3 senarios are possible:
+#
+# 1. usergroups is defined and usergroup is defined
+#   => running with role main.yml as entrypoint
+#
+# 2. usergroups is defined and usergroup is undefined
+#   => running with role account.yml as entrypoint.
+#
+# 3. usergroups is undefined -> running with no inventory config provided
+#   => meaning we only configure current ansible remote_user account.
+#
+# The purpose of this task file is to configure a given account
 - name: set 'a_cm_user' var
   set_fact:
     # user invoking ansible on the control machine
@@ -8,18 +20,12 @@
   when: a_cm_user is not defined
   tags: always
 
-# Using inventory defined input thus allowing inventory specific.
-#   3 senarios are possible:
-#     1. usergroups is defined and usergroup is defined -> running with
-#       role main.yml as entrypoint
-#     2. usergroups is defined and usergroup is undefined -> running with
-#       role account.yml as entrypoint.
-#     3. usergroups is undefined -> running with no inventory config
-#       meaning we only configure current ansible remote_user account.
+- block:
+  - debug: var=usergroups
+  - debug: var=usergroup
+  when: debug
 
-# - debug: var=usergroups
-# - debug: var=usergroup
-
+# The only facts we need.
 - name: gather "ansible_facts['env']" facts
   setup: gather_subset=!all
   when:
@@ -28,7 +34,8 @@
   check_mode: True
   tags: always
 
-- name: set 'users' var - inventory defined usergroups
+# Honor inventory defined "users" item.
+- name: set 'users' var - 'usergroups' defined in the inventory
   block:
     - name: set 'users' from 'usergroup' - running with "main.yml" as entrypoint
       set_fact:
@@ -37,7 +44,7 @@
       when:
         - usergroup is defined
 
-    # todo: set users searching recursively in usergroups
+    # TODO: set users searching recursively in usergroups
     - name: set 'users' from first 'usergroups' - running with 'account.yml' as entrypoint
       set_fact:
         users: "{{usergroups[0]['users']}}"
@@ -51,15 +58,18 @@
   check_mode: True
   tags: always
 
-# configuring current user only
-- name: set 'users' (fallback method) - running from 'account.yml' as entrypoint
+  # Case 3: configuring current user only
+- name: set 'users' var - 'usergroups' not defined in the inventory
   set_fact:
     users:
-      # This is set to remote_user (not affected by --user) Requires fact gathering.
+      # Default 'remote_user' to configure.
+      # NOTE: This fact is not affected by the '--user' ansible arg).
+      #       Proper fact gathering is required.
       - name: "{{ansible_facts['env']['USER']}}"
         vim_dir: ".vim"
         # Required by several tasks. Defaults to 'USER' env variable.
-        # fixme: detect the real user gid
+        # FIXME: detect the real user gid
+        # NOTE: the dotfiles directory used is ~/dotfiles
     usergroup:
         name: "{{ansible_facts['env']['USER']}}"
   when:
@@ -67,11 +77,12 @@
   check_mode: True
   tags: always
 
-# - debug: var=ansible_facts['env']['USER']
-# - debug: var=ansible_facts
-# - debug: var=usergroups
-# - debug: var=usergroup
-# - debug: var=users
+- block:
+  - debug: var=usergroups
+  - debug: var=ansible_facts['env']['USER']
+  - debug: var=usergroup
+  - debug: var=users
+  when: debug
 
 - include_tasks: ssh_authorized_keys.yml
   when: ansible_connection != 'local'
@@ -79,9 +90,31 @@
   loop_control:
     loop_var: user
   vars:
-    cm_user: "{{(ansible_facts['env']['USER'] == 'root') |ternary(a_cm_user, users_usermap.get(user['name'], user['name']))}}"
+    cm_user: "{{(ansible_facts['env']['USER'] == 'root')|ternary(a_cm_user, users_usermap.get(user['name'], user['name']))}}"
+
+- import_tasks: account_dotfiles.yml
+  when:
+    - users_dotfiles_hosts is undefined or (users_dotfiles_hosts is defined and (users_dotfiles_hosts in dotfiles_hosts or users_dotfiles_hosts in group_names))
+  vars:
+    dotfiles_hosts:
+      - "{{inventory_hostname}}"
+      - "{{ansible_facts['fqdn']}}"
 
 # ssh_config templating
 # - include_tasks: ssh_config.yml
 
-- include_tasks: account_dotfiles.yml
+# Personalise homedir with directories, '/etc/skel' could have been use but this
+# is useful when you do not have control over '/etc/skel' template. See
+# 'users_skel_homedirs' in 'defaults/main.yml'.
+- name: skel created home directories
+  file:
+    owner: "{{item[0]['name']}}"
+    group: "{{usergroup['name']}}"
+    path: "{{item[0]['homedir']|default(users_defaults['homedir_root'] ~ '/' ~ item[0]['name'])}}/{{item[1]}}"
+    state: directory
+    mode: 0700
+  loop: "{{lookup('nested', users, users_defaults['skel'])}}"
+  when: users_skel_homedir or item[0]['skel_homedir']|default(False)
+  tags:
+    - accounts
+    - skel

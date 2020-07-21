@@ -1,72 +1,64 @@
 ---
 
-- name: create directories for keyrings in '{{groups_dir}}/{{usergroup['name']}}
-  file:
-    path: "{{groups_dir}}/{{usergroup['name']}}/old_keys"
-    state: directory
-  become: no
-  delegate_to: localhost
-  run_once: yes
-
 ################################
 # removal of unmanaged ssh keys
 ################################
 
-# unmanaged_ssh_keys: flat list of keys no longer required
-- name: set '{{usergroup['name']}}' 'unmanaged' lists
+# ssh_unmanaged_keys: flat list of keys no longer required
+- name: set '{{usergroup['name']}}' 'ssh_unmanaged_keysunmanaged'
   set_fact:
-    # this reads as 'active_ssh_keys not in managed_ssh_keys'
-    unmanaged_ssh_keys: "{{active_ssh_keys|difference(managed_ssh_keys)}}"
+    # this reads as 'ssh_active_keys not in ssh_managed_keys'
+    ssh_unmanaged_keys: "{{ssh_active_keys|difference(ssh_managed_keys)}}"
 
   # those are moved to old_keys dir just in case
-- name: backup '{{usergroup['name']}}' unmanaged public ssh keys on control machine
+- name: backup '{{usergroup['name']}}' 'ssh_unmanaged_keys' on control machine
   command: >
     mv {{groups_dir}}/{{usergroup['name']}}/keys/{{item}}.pub
       {{groups_dir}}/{{usergroup['name']}}/old_keys/
-  loop: "{{unmanaged_ssh_keys|default(omit)}}"
+  loop: "{{ssh_unmanaged_keys|default(omit)}}"
   delegate_to: localhost
   # ignore missing
   ignore_errors: true
   run_once: true
 
-- name: backup '{{usergroup['name']}}' target's unmanaged keypairs to user's ~/.ssh/old_keys
-  command: mv ~/.ssh/{{item}} ~/.ssh/old_keys/
+- name: backup '{{usergroup['name']}}' users' 'ssh_unmanaged_keys' to ~/.ssh/old_keys on hosts
+  command: mv ~/.ssh/{{item}}* ~/.ssh/old_keys/
   become_user: "{{item.split('.', 1)}}"
-  loop: "{{unmanaged_ssh_keys|default(omit)}}"
+  loop: "{{ssh_unmanaged_keys|default(omit)}}"
 
 ####################
 # ssh key rotation
 ####################
 
 # result is returned in the 'files' list of dict
-- name: register raw list of {{usergroup['name']}} expired keys (older than {{ users_ssh_key_max_age }})
+- name: register {{usergroup['name']}} 'ssh_expired_keys_raw' (keys older than {{users_ssh_key_max_age}})
   find:
     age: "{{users_ssh_key_max_age}}"
     paths: "{{groups_dir}}/{{usergroup['name']}}/keys"
     patterns: '*.pub'
-  register: raw_expired_ssh_keys
+  register: ssh_expired_keys_raw
 
-# expired_ssh_keys: list of keys that needs to be rotated
-- name: set {{usergroup['name']}} 'expired' ssh_key facts
+# ssh_expired_keys: list of keys that needs to be rotated
+- name: set {{usergroup['name']}} 'ssh_expired_keys' fact
   set_fact:
-    expired_ssh_keys: "{{raw_expired_ssh_keys.files|map(attribute='path')|get_ssh_keylist}}"
+    ssh_expired_keys: "{{ssh_expired_keys_raw.files|map(attribute='path')|get_ssh_keylist}}"
 
   # those are moved to old_keys dir just in case
-- name: move away {{usergroup['name']}} expired ssh keys on control machine
+- name: move out {{usergroup['name']}} 'ssh_expired_keys' on control machine
   command: >
     mv {{groups_dir}}/{usergroup['name']}}/keys/{{item}}.pub
       {{groups_dir}}/{{usergroup['name']}}/old_keys/
-  loop: "{{expired_ssh_keys|default(omit)}}"
+  loop: "{{ssh_expired_keys|default(omit)}}"
   delegate_to: localhost
   # ignore missing
   ignore_errors: true
   run_once: true
 
-- name: move expired keypairs to user's ~/.ssh/old_keys
+- name: move out 'ssh_expired_key' to user's ~/.ssh/old_keys on hosts
   command: mv ~/.ssh/{{item}}* ~/.ssh/old_keys/
   become_user: "{{item.split('.', 1)}}"
-  loop: "{{expired_ssh_keys|default(omit)}}"
+  loop: "{{ssh_expired_keys|default(omit)}}"
 
-- name: set {{usergroup['name']}} 'new_ssh_keys' lists /w expired keys
+- name: set {{usergroup['name']}} 'ssh_new_keys' fact (w/ expired keys)
   set_fact:
-    new_ssh_keys: "{{managed_ssh_keys|difference(active_ssh_keys)|union(expired_ssh_key)|split_keynames}}"
+    ssh_new_keys: "{{ssh_managed_keys|difference(ssh_active_keys)|union(ssh_expired_keys)|split_keynames}}"
